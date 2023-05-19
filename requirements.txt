@@ -1,0 +1,12 @@
+streamlit
+numpy
+pandas
+yfinance
+matplotlib
+pyportfolioopt
+pyfolio
+empyrical
+tabulate
+openpyxl
+fredapi
+plotly
