@@ -40,10 +40,12 @@ def simulate_portfolio(portfolio_summary):
     return pd.DataFrame(asset_dataframes)
 
 # run simulations in parallel using multiprocessing
-@st.cache
+@st.cache_data
 def run_portfolio_simulations(portfolio_summary, n_simulations):
     start_time = time.time()
     n_cores = multiprocessing.cpu_count()
+    print(f"Number of cores: {n_cores}")
+    
     results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
         futures = []
@@ -56,7 +58,7 @@ def run_portfolio_simulations(portfolio_summary, n_simulations):
             results.append(result)
         
     end_time = time.time()
-    print("The loop took", end_time - start_time, "seconds to run")
+    print("The main sim loop took", end_time - start_time, "seconds to run")
     
     return results
         
@@ -64,6 +66,7 @@ def plot_simulation_results(results):
     # Histogram of final portfolio values
     col1, col2, col3 = st.columns(3)
     
+    start_time = time.time()
     # Histogram of final portfolio values
     # Histogram of final portfolio values
     final_values = [result.sum(axis=1).iloc[-1] for result in results]
@@ -77,10 +80,16 @@ def plot_simulation_results(results):
                            xaxis_title='Portfolio Value',
                            yaxis_title='Frequency',
                            xaxis_tickprefix="$")
+    end_time = time.time()
+    print("The histogram took", end_time - start_time, "seconds to calculate")
     
+    start_time = time.time()
     with col1:
         st.plotly_chart(hist_fig)
-
+        end_time = time.time()
+        print("The histogram took", end_time - start_time, "seconds to render")
+    
+    start_time = time.time()
     # Scatter plot of portfolio value over time for all simulations
     scatter_fig = go.Figure()
 
@@ -117,10 +126,16 @@ def plot_simulation_results(results):
                               yaxis_type="log",
                               yaxis_tickprefix="$",
                               showlegend=False)
+    end_time = time.time()
+    print("The scatter took", end_time - start_time, "seconds to calculate")
     
+    start_time = time.time()
     with col2:
         st.plotly_chart(scatter_fig)
+        end_time = time.time()
+        print("The scatter took", end_time - start_time, "seconds to render")
     
+    start_time = time.time()
     # Box plot of portfolio values for each year
     box_fig = go.Figure()
 
@@ -134,6 +149,11 @@ def plot_simulation_results(results):
                           yaxis_title='Portfolio Value',
                           yaxis_type="log",
                           yaxis_tickprefix="$")
+    end_time = time.time()
+    print("The box plot took", end_time - start_time, "seconds to calculate")
 
+    start_time = time.time()
     with col3:
         st.plotly_chart(box_fig)
+        end_time = time.time()
+        print("The box plot took", end_time - start_time, "seconds to render")

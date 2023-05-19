@@ -10,6 +10,8 @@ import streamlit as st
 import yfinance as yf
 from fredapi import Fred
 
+from config import OPENAI_API_KEY, FRED_API_KEY
+
 @st.cache_data
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}

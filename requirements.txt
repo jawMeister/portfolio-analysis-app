@@ -10,3 +10,8 @@ tabulate
 openpyxl
 fredapi
 plotly
+PyYAML
+langchain
+openai
+wikipedia
+tiktoken

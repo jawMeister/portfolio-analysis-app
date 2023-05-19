@@ -3,6 +3,9 @@ import traceback
 
 import utils
 import plots
+import interpret
+
+from config import OPENAI_API_KEY, FRED_API_KEY
 
 def display_selected_portfolio(portfolio_df, portfolio_summary):
     expected_return = portfolio_summary["portfolio_expected_return"]
@@ -40,10 +43,9 @@ def display_portfolio_results(initial_investment, ret, sharpe_ratio_val, sortino
         st.write(f"Assuming that yearly contributions are made one time at the end of each year (after the annual return has \
                     been applied for that year), not including any taxes, fees or dividends and not accounting for individual \
                     appreciation rates by asset, a portfolio with a {ret*100:.1f}% annual return over {years} years could be \
-                    worth ${total_return:,.0f}. Currently working on simulating future returns based on selected portfolio.")
+                    worth ${total_return:,.0f}. Currently working on simulating future returns based on selected portfolio, \
+                    see the returns tab for progress so far.")
             
-    st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
-    st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")
 
 def display_asset_values(asset_values):
     st.write(f"\n**Projected return over {len(asset_values)-1} years based on portfolio weights against initial and yearly contribution with reinvested dividends:**")
@@ -86,12 +88,6 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
                                           total_return, 
                                           portfolio_summary["years"])
                 
-                st.write("Sharpe Ratio of 1.08: A Sharpe ratio of 1.08 indicates that the investment or portfolio generated a positive risk-adjusted return. It suggests that, on average, the investment or portfolio earned 1.08 units of excess return over the risk-free rate per unit of standard deviation. A higher Sharpe ratio is generally considered favorable, indicating better risk-adjusted performance.")
-                st.write("Sortino Ratio of 1.86: A Sortino ratio of 1.86 suggests that the investment or portfolio achieved a favorable risk-adjusted return relative to its downside risk. It means that the investment's or portfolio's return was 1.86 times greater than its downside deviation. The Sortino ratio emphasizes the protection against downside risk, and a higher value is generally desirable.")
-                st.write("CVaR (Conditional Value at Risk) of 0.03: A CVaR of 0.03 indicates that there is a 3% probability that the investment or portfolio may experience a loss beyond the specified confidence level. A lower CVaR indicates a lower expected loss, which can be seen as a more favorable risk characteristic.")
-                st.write("\nTaken together, these metrics (1.08, 1.86, 0.03) suggest that the investment or portfolio has generated positive risk-adjusted returns, exhibited favorable performance relative to both overall and downside risk, and has a relatively low expected loss during extreme events. However, it's essential to consider these metrics in conjunction with other factors such as investment objectives, time horizon, and risk tolerance to make informed investment decisions.")
-                # st.write(f"\n**Total Return** based on \\${initial_investment:,.0f} initial investment and compounded with \\${yearly_contribution:,.0f} yearly contributions: \\${total_return:,.2f}")  
-            
             with col2:
                 # Display portfolio details
                 plots.plot_historical_performance(portfolio_summary["stock_data"], 
@@ -104,8 +100,43 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
                 # Display portfolio details
                 plots.plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio)
                 plots.plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, optimal_portfolio)  
-        
-        
+                
+                
+            with col1:
+                # Initialize the API key and the flag in the session state if they are not already present
+                if 'openai_api_key' not in st.session_state:
+                    # Import OPENAI_API_KEY only if it has a non-empty value and is not "None"
+                    if OPENAI_API_KEY and OPENAI_API_KEY.strip() and OPENAI_API_KEY != "None":
+                        st.session_state.openai_api_key = OPENAI_API_KEY
+                        st.session_state.key_provided = True
+                    else:
+                        st.session_state.openai_api_key = ""
+                        st.session_state.key_provided = False
+
+                if not st.session_state.key_provided:
+                    label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
+                    temp_key = st.text_input(label, value=st.session_state.openai_api_key)
+                    if temp_key:
+                        st.session_state.openai_api_key = temp_key
+                        st.session_state.key_provided = True
+
+                # Create a placeholder for API response message
+                placeholder = st.empty()
+
+                if st.session_state.key_provided and st.session_state.openai_api_key != "None":
+                    print(f"OpenAI API Key: {st.session_state.openai_api_key} of type {type(st.session_state.openai_api_key)}")
+                    
+                    # Display a message indicating the application is waiting for the API to respond
+                    placeholder.markdown('<p style="color:red;">Waiting for API to respond...</p>', unsafe_allow_html=True)
+                    
+                    interpret.openai_interpret_portfolio_summary(portfolio_summary, st.session_state.openai_api_key)
+
+                    # Clear the placeholder
+                    placeholder.empty()
+
+                st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
+                st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")
+    
     except Exception as e:
         st.write("An error occurred during the calculation. Please check your inputs.")
         st.write(str(e))
