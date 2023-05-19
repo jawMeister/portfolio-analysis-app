@@ -67,37 +67,25 @@ def display_asset_values(asset_values):
     st.dataframe(formatted_asset_values, use_container_width=True)
 
 # main display function
-def display_portfolio(stock_data, dividend_data, mu, S, start_date, end_date, risk_level, initial_investment, yearly_contribution, years, risk_free_rate):
+def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optimal_portfolio, efficient_portfolios):
     try:
-        # Calculate portfolio statistics
-        portfolio_df, portfolio_summary = \
-            utils.calculate_portfolio_df(stock_data, dividend_data, 
-                                         mu, S, start_date, end_date, risk_level, initial_investment, yearly_contribution, years, risk_free_rate)
-        
-        # Calculate efficient portfolios for plotting
-        efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, risk_free_rate)
-        
-        # Get the selected and optimal portfolios
-        selected_portfolio = utils.calculate_portfolio_performance(portfolio_summary["risk_level"], 
-                                                                   portfolio_summary["weights"], 
-                                                                   portfolio_summary["portfolio_expected_return"], 
-                                                                   portfolio_summary["volatility"], 
-                                                                   portfolio_summary["sharpe_ratio"])
-        
-        optimal_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
-        
-        # Calculate projected returns
-        total_return = utils.calculate_total_return(initial_investment, portfolio_summary["portfolio_expected_return"], yearly_contribution, years)
-        #asset_values, detailed_asset_holdings = utils.calculate_asset_values(stock_data, dividend_data, portfolio_summary["weights"], portfolio_summary["individual_returns"], portfolio_summary["mu"], initial_investment, yearly_contribution, years)
-        asset_values, detailed_asset_holdings = utils.calculate_future_asset_holdings(portfolio_summary)
+
+        # estimate projected returns
+        total_return = utils.calculate_total_return(portfolio_summary["initial_investment"], portfolio_summary["portfolio_expected_return"], portfolio_summary["yearly_contribution"], portfolio_summary["years"])
         
         with st.container():
             col1, col2, col3 = st.columns([1, 1, 1])
     
             with col1:
                 display_selected_portfolio(portfolio_df, portfolio_summary)
-                display_portfolio_results(initial_investment, portfolio_summary["portfolio_expected_return"], portfolio_summary["sharpe_ratio"], 
-                                          portfolio_summary["sortino_ratio"], portfolio_summary["cvar"], total_return, years)
+                display_portfolio_results(portfolio_summary["initial_investment"], 
+                                          portfolio_summary["portfolio_expected_return"], 
+                                          portfolio_summary["sharpe_ratio"], 
+                                          portfolio_summary["sortino_ratio"], 
+                                          portfolio_summary["cvar"], 
+                                          total_return, 
+                                          portfolio_summary["years"])
+                
                 st.write("Sharpe Ratio of 1.08: A Sharpe ratio of 1.08 indicates that the investment or portfolio generated a positive risk-adjusted return. It suggests that, on average, the investment or portfolio earned 1.08 units of excess return over the risk-free rate per unit of standard deviation. A higher Sharpe ratio is generally considered favorable, indicating better risk-adjusted performance.")
                 st.write("Sortino Ratio of 1.86: A Sortino ratio of 1.86 suggests that the investment or portfolio achieved a favorable risk-adjusted return relative to its downside risk. It means that the investment's or portfolio's return was 1.86 times greater than its downside deviation. The Sortino ratio emphasizes the protection against downside risk, and a higher value is generally desirable.")
                 st.write("CVaR (Conditional Value at Risk) of 0.03: A CVaR of 0.03 indicates that there is a 3% probability that the investment or portfolio may experience a loss beyond the specified confidence level. A lower CVaR indicates a lower expected loss, which can be seen as a more favorable risk characteristic.")
@@ -106,14 +94,17 @@ def display_portfolio(stock_data, dividend_data, mu, S, start_date, end_date, ri
             
             with col2:
                 # Display portfolio details
-                plots.plot_historical_performance(stock_data, dividend_data, start_date, end_date, selected_portfolio)
+                plots.plot_historical_performance(portfolio_summary["stock_data"], 
+                                                  portfolio_summary["dividend_data"], 
+                                                  portfolio_summary["start_date"], 
+                                                  portfolio_summary["end_date"], 
+                                                  selected_portfolio)
                             
             with col3:
                 # Display portfolio details
                 plots.plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio)
                 plots.plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, optimal_portfolio)  
         
-        return asset_values, detailed_asset_holdings
         
     except Exception as e:
         st.write("An error occurred during the calculation. Please check your inputs.")

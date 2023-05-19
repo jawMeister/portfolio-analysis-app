@@ -197,7 +197,6 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     
     # Calculate absolute portfolio returns and cumulative returns
 
-
     # Calculate monthly returns for tickers
     stock_returns = stock_data.pct_change().resample('M').mean()
     sp500_returns = sp500_data.pct_change().resample('M').mean()
@@ -218,15 +217,12 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     portfolio_returns_absolute = (stock_returns.mul(weights, axis=1)).sum(axis=1)
     cumulative_returns_absolute = (1 + portfolio_returns_absolute).cumprod() - 1
 
-    
     # Calculate portfolio returns relative 
     portfolio_returns_sp500 = (stock_returns * weights).sum(axis=1)
     #portfolio_returns_risk_free = (stock_returns.mul(weights, axis=1) - risk_free_rate_returns).sum(axis=1)
-    
     # Calculate relative performance ******************************************************
     #relative_performance_sp500 = stock_returns.sub(sp500_returns, axis='columns')
     #cumulative_relative_performance_sp500 = (1 + relative_performance_sp500).cumprod() - 1
-
     
     # Before calculating the dividend_yield, ensure that both dataframes have the same timezone
     if stock_data.index.tz is not None and monthly_dividend_data.index.tz is None:
@@ -269,8 +265,6 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
             name=ticker
         ))
         
- 
-    
     fig5.update_layout(
         title='Cumulative Performance by Ticker Relative to S&P 500',
         xaxis_title='Date',

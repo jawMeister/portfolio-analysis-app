@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'
 import utils
 import display
 import plots
+import analysis
 
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
@@ -77,13 +78,35 @@ with st.sidebar:
         
 if tickers and start_date and end_date and initial_investment and years:
     tab1, tab2 = st.tabs(["Portfolio Analysis","Returns Analysis"])
+            # Calculate portfolio statistics
+    portfolio_df, portfolio_summary = utils.calculate_portfolio_df(stock_data, dividend_data, 
+                                        mu, S, start_date, end_date,  st.session_state.risk_level, initial_investment, yearly_contribution, years, risk_free_rate)
     
-    with tab1:
-        asset_values, detailed_asset_holdings = display.display_portfolio(stock_data, dividend_data, mu, S, start_date, end_date, st.session_state.risk_level, initial_investment, yearly_contribution, years, risk_free_rate)
+    # Calculate efficient portfolios for plotting
+    efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, risk_free_rate)
+    
+    # Get the selected and optimal portfolios
+    selected_portfolio = utils.calculate_portfolio_performance(portfolio_summary["risk_level"], 
+                                                                portfolio_summary["weights"], 
+                                                                portfolio_summary["portfolio_expected_return"], 
+                                                                portfolio_summary["volatility"], 
+                                                                portfolio_summary["sharpe_ratio"])
+    
+    optimal_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
+    
 
+    asset_values, detailed_asset_holdings = utils.calculate_future_asset_holdings(portfolio_summary)
+        
+    with tab1:
+        display.display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optimal_portfolio, efficient_portfolios)
+        
     with tab2:
         st.write("TODO: Returns Analysis leveraging various prediction models to include volatility")
-        st.write("Assuming constant growth rate (NOT reality), forecast below")
         
-        display.display_asset_values(asset_values)
-        plots.plot_asset_values(asset_values)
+        with st.expander("NOT reality, assumes constant growth rate"):
+            display.display_asset_values(asset_values)
+            plots.plot_asset_values(asset_values)
+        
+        n_simulations = st.slider("Number of simulations (higher is more accurate, will take longer)", min_value=500, max_value=100000, step=1000, value=5000)
+        simulation_results = analysis.run_portfolio_simulations(portfolio_summary, n_simulations)
+        analysis.plot_simulation_results(simulation_results)
