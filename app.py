@@ -101,12 +101,18 @@ if tickers and start_date and end_date and initial_investment and years:
         display.display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optimal_portfolio, efficient_portfolios)
         
     with tab2:
-        st.write("TODO: Returns Analysis leveraging various prediction models to include volatility")
+        st.write("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
         
         with st.expander("NOT reality, assumes constant growth rate"):
             display.display_asset_values(asset_values)
             plots.plot_asset_values(asset_values)
         
-        n_simulations = st.slider("Number of simulations (higher is more accurate, will take longer)", min_value=500, max_value=100000, step=1000, value=5000)
-        simulation_results = analysis.run_portfolio_simulations(portfolio_summary, n_simulations)
+        if "n_simulations" not in st.session_state:
+            st.session_state.n_simulations = 2500
+        
+        #TODO: add a button to execute the simulations
+        st.slider("Number of simulations (higher is more accurate, will take longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
+        simulation_results = analysis.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations)
         analysis.plot_simulation_results(simulation_results)
+        
+        st.write("TODO: add more analysis here")
