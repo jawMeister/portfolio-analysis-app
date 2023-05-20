@@ -195,3 +195,114 @@ def plot_simulation_results(results):
             end_time = time.time()
             print("The box plot took", end_time - start_time, "seconds to render")
 #        placeholder = st.empty()
+
+
+def plot_density_plots(results):
+    # Number of years in the simulation
+    N = len(results[0])
+
+    # Index of the middle year
+    mid_index = N // 2
+
+    with st.spinner('Calculating Probability Density Plots...'):
+        # Extract the portfolio values for years 1, N/2, and N
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            plot_probability_density_for_a_given_year("Year 1", [result.iloc[1].sum() for result in results])
+            
+        with col2:
+            plot_probability_density_for_a_given_year(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results])
+            
+        with col3:
+            plot_probability_density_for_a_given_year(f'Year {N}', [result.iloc[-1].sum() for result in results])
+
+def format_currency(value):
+    # Store the sign of the value to restore it later
+    sign = -1 if value < 0 else 1
+    value *= sign
+
+    if value >= 1e12:   # Trillions
+        return f'{"-" if sign < 0 else ""}${value/1e12:.1f}T'
+    elif value >= 1e9:  # Billions
+        return f'{"-" if sign < 0 else ""}${value/1e9:.1f}B'
+    elif value >= 1e6:  # Millions
+        return f'{"-" if sign < 0 else ""}${value/1e6:.1f}M'
+    elif value >= 1e3:  # Thousands
+        return f'{"-" if sign < 0 else ""}${value/1e3:.1f}K'
+    else:
+        return f'{"-" if sign < 0 else ""}${value:.2f}'
+        
+#TODO: work on using continuous colors vs. discrete colors
+def plot_probability_density_for_a_given_year(year, values):
+    # Create the KDE
+    kde = stats.gaussian_kde(values)
+
+    # Generate the x values
+    x = np.linspace(min(values), max(values), 1000)
+
+    # Generate the y values
+    y = kde(x)
+
+    # Create the figure
+    fig = go.Figure()
+
+    # Add the density plot
+    fig.add_trace(go.Scatter(x=x, y=y, mode='lines'))
+
+    # Calculate the mean and standard deviation
+    mean_value = np.mean(values)
+    std_dev = np.std(values)
+
+    # Create x-axis ticks and labels based on standard deviations
+    xticks = [mean_value + i*std_dev for i in range(-5, 6)]
+    xticklabels = [format_currency(v) for v in xticks]  # updated to actual portfolio values
+
+    
+    fig.add_shape(type="line", 
+                    x0=mean_value, x1=mean_value, 
+                    y0=0, y1=max(y),
+                    line=dict(color="LightBlue", width=1))
+    
+    fig.add_annotation(x=mean_value, y=max(y),
+                        text='mean', showarrow=False, 
+                        font=dict(color="LightBlue"),
+                        ax=20, ay=-40)  # adjusting the angle and position of the annotation
+        
+    # Colors for standard deviation lines
+    colors = ["#FF0000", "#FF4500", "#FF8C00", "#FFA500", "#FFD700"]
+    
+    # Add lines for standard deviations
+    for i in range(1, 6):
+        color = colors[i-1]
+
+        fig.add_shape(type="line", 
+                        x0=mean_value + i*std_dev, x1=mean_value + i*std_dev, 
+                        y0=0, y1=max(y),
+                        line=dict(color=color, width=1))
+
+        fig.add_shape(type="line", 
+                        x0=mean_value - i*std_dev, x1=mean_value - i*std_dev, 
+                        y0=0, y1=max(y),
+                        line=dict(color=color, width=1))
+
+        # Add sigma labels
+        fig.add_annotation(x=mean_value + i*std_dev, y=max(y),
+                            text=f'{i} sigma', showarrow=False, 
+                            font=dict(color=color),
+                            ax=20, ay=-40)  # adjusting the angle and position of the annotation
+        fig.add_annotation(x=mean_value - i*std_dev, y=max(y),
+                            text=f'-{i} sigma', showarrow=False,
+                            font=dict(color=color),
+                            ax=-20, ay=-40)  # adjusting the angle and position of the annotation
+
+        # Update the layout
+        fig.update_layout(title=f'Probability Density for {year}',
+                          xaxis_title='Portfolio Value',
+                          yaxis_title='Density',
+                          xaxis=dict(tickmode='array', tickvals=xticks, ticktext=xticklabels),
+                          autosize=True,
+                          showlegend=False)
+
+    # Display the figure in Streamlit
+    st.plotly_chart(fig)
