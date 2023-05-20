@@ -14,6 +14,7 @@ import streamlit as st
 from scipy.stats import norm, gaussian_kde
 from scipy import stats
 
+#TODO: work on performance, need to explore other charting libraries, eg, Seaborn, Altair, Bokeh, etc.
 # function to simulate future portfolio values
 def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
     # initialize asset values with initial investments

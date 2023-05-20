@@ -15,17 +15,17 @@ def plot_efficient_frontier_v0(efficient_portfolios, selected_portfolio, optimal
     ax.plot(risks, returns, 'y', label='Efficient Frontier')
 
     # Plot selected portfolio
-    ax.plot(selected_portfolio['risks'], selected_portfolio['returns'], 'ro', label='Selected Portfolio')
+    ax.plot(selected_portfolio['risks'], selected_portfolio['returns'], 'ro', label='Selected Portfolio', markersize=10)
 
     # Plot optimal portfolio
     opt_label = 'Optimal Portfolio (risk: ' + str(round(optimal_portfolio['risks'], 4)) + ', return: ' + str(round(optimal_portfolio['returns'], 4)) + ')'
-    ax.plot(optimal_portfolio['risks'], optimal_portfolio['returns'], 'go', label=opt_label)
+    ax.plot(optimal_portfolio['risks'], optimal_portfolio['returns'], 'go', label=opt_label, markersize=30)
     
     # Plot min volatility portfolio
-    ax.plot(efficient_portfolios[0]['risks'], efficient_portfolios[0]['returns'], 'bo', label='Min Volatility Portfolio')
+    ax.plot(efficient_portfolios[0]['risks'], efficient_portfolios[0]['returns'], 'bo', label='Min Volatility Portfolio', markersize=10)
     
     # Plot max sharpe portfolio
-    ax.plot(efficient_portfolios[-1]['risks'], efficient_portfolios[-1]['returns'], 'yo', label='Max Sharpe Portfolio')
+    ax.plot(efficient_portfolios[-1]['risks'], efficient_portfolios[-1]['returns'], 'yo', label='Max Sharpe Portfolio', markersize=10)
 
     ax.legend(loc='best')
     ax.set_xlabel('Risk')

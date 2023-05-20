@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 from pypfopt import expected_returns, risk_models
 
 import warnings
@@ -23,11 +23,14 @@ with st.sidebar:
     tickers = st.text_area("Enter ticker symbols (comma separated)", "AAPL,AMZN,NVDA,MMC,GOOG,MSFT,BTC-USD,ETH-USD,XOM,BAC,V,GOLD")
     tickers = tickers.split(",")
     tickers = list(set(tickers))
+    
+    # Calculate yesterday's date
+    yesterday = datetime.now() - timedelta(1)
 
     start_date = st.date_input("Start date (for historical stock data)", datetime(2014, 1, 1))
-    end_date = st.date_input("End date (for historical stock data)", datetime(2023, 5, 11))
+    end_date = st.date_input("End date (for historical stock data)", yesterday)
 
-    risk_free_rate = st.number_input("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=5.0, format="%.1f") / 100
+    risk_free_rate = st.number_input("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f") / 100
 
     initial_investment = st.slider("Initial investment", min_value=0, max_value=1000000, step=5000, value=50000, format="$%d")
     yearly_contribution = st.slider("Yearly contribution", min_value=0, max_value=250000, step=5000, value=25000, format="$%d")
@@ -80,7 +83,7 @@ with st.sidebar:
         st.markdown("Source: [Nobel Prize](https://www.nobelprize.org/prizes/economic-sciences/1990/summary/)")
         
 if tickers and start_date and end_date and initial_investment and years:
-    tab1, tab2 = st.tabs(["Portfolio Analysis","Returns Analysis"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", "Portfolio Optimization"])
             # Calculate portfolio statistics
     portfolio_df, portfolio_summary = utils.calculate_portfolio_df(stock_data, dividend_data, 
                                         mu, S, start_date, end_date,  st.session_state.risk_level, initial_investment, yearly_contribution, years, risk_free_rate)
@@ -105,3 +108,10 @@ if tickers and start_date and end_date and initial_investment and years:
        
     with tab2:
         display.display_portfolio_returns_analysis(portfolio_summary, asset_values)
+        
+    with tab3:
+        st.write("TODO: macro economic analysis")
+        
+    with tab4:
+        st.write("TODO: portfolio optimization")
+    
