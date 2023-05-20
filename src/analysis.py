@@ -13,6 +13,9 @@ import time
 import streamlit as st
 from scipy.stats import norm, gaussian_kde
 from scipy import stats
+from scipy.stats import t
+from scipy import integrate
+from scipy.integrate import quad
 
 #TODO: work on performance, need to explore other charting libraries, eg, Seaborn, Altair, Bokeh, etc.
 # function to simulate future portfolio values
@@ -170,8 +173,6 @@ def plot_simulation_results(results):
             print("The scatter took", end_time - start_time, "seconds to render")
     
     with col3:
-#        placeholder = st.empty()
-#        placeholder.markdown("Calculating Box Plot of Simulated Portfolio Values...")
         with st.spinner('Calculating Scatter Box Plot of Simulated Portfolio Values...'):
             start_time = time.time()
             # Box plot of portfolio values for each year
@@ -195,11 +196,9 @@ def plot_simulation_results(results):
             st.plotly_chart(box_fig)
             end_time = time.time()
             print("The box plot took", end_time - start_time, "seconds to render")
-#        placeholder = st.empty()
 
 
-def plot_density_plots(results):
-    # Number of years in the simulation
+def plot_density_plots(results, distribution_type):
     N = len(results[0])
 
     # Index of the middle year
@@ -210,13 +209,13 @@ def plot_density_plots(results):
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            plot_probability_density_for_a_given_year("Year 1", [result.iloc[1].sum() for result in results])
+            plot_probability_density_for_a_given_year_vIntegral("Year 1", [result.iloc[1].sum() for result in results], distribution_type)
             
         with col2:
-            plot_probability_density_for_a_given_year(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results])
+            plot_probability_density_for_a_given_year_vIntegral(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results], distribution_type)
             
         with col3:
-            plot_probability_density_for_a_given_year(f'Year {N}', [result.iloc[-1].sum() for result in results])
+            plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', [result.iloc[-1].sum() for result in results], distribution_type)
 
 def format_currency(value):
     # Store the sign of the value to restore it later
@@ -234,8 +233,16 @@ def format_currency(value):
     else:
         return f'{"-" if sign < 0 else ""}${value:.2f}'
         
-#TODO: work on using continuous colors vs. discrete colors
-def plot_probability_density_for_a_given_year(year, values):
+
+def gaussian_kde_cdf(kde, x):
+    mean_value = np.mean(kde.dataset)  # Note: assuming kde.dataset is the input data
+    std_dev = np.std(kde.dataset)
+    N = 5
+    lower_bound = max(mean_value - N*std_dev, -np.inf)
+    return quad(kde.evaluate, lower_bound, x)[0]
+
+def plot_probability_density_for_a_given_year_vIntegral(year, values, distribution_type):
+        
     # Create the KDE
     kde = stats.gaussian_kde(values)
 
@@ -243,7 +250,7 @@ def plot_probability_density_for_a_given_year(year, values):
     x = np.linspace(min(values), max(values), 1000)
 
     # Generate the y values
-    y = kde(x)
+    y = kde.pdf(x)
 
     # Create the figure
     fig = go.Figure()
@@ -258,52 +265,55 @@ def plot_probability_density_for_a_given_year(year, values):
     # Create x-axis ticks and labels based on standard deviations
     xticks = [mean_value + i*std_dev for i in range(-5, 6)]
     xticklabels = [format_currency(v) for v in xticks]  # updated to actual portfolio values
-
     
     fig.add_shape(type="line", 
                     x0=mean_value, x1=mean_value, 
                     y0=0, y1=max(y),
                     line=dict(color="LightBlue", width=1))
-    
-    fig.add_annotation(x=mean_value, y=max(y),
-                        text='mean', showarrow=False, 
-                        font=dict(color="LightBlue"),
-                        ax=20, ay=-40)  # adjusting the angle and position of the annotation
-        
-    # Colors for standard deviation lines
+
     colors = ["#FFD700", "#FFA500","#FF8C00","#FF4500","#FF0000"]
-    
-    # Add lines for standard deviations
-    for i in range(1, 6):
-        color = colors[i-1]
+    probability_dict = {}
+
+    # Add sigma labels and calculate probability ranges
+    for i in range(-5, 6):
+        color = colors[abs(i)-1] if i != 0 else "LightBlue"
 
         fig.add_shape(type="line", 
                         x0=mean_value + i*std_dev, x1=mean_value + i*std_dev, 
                         y0=0, y1=max(y),
                         line=dict(color=color, width=1))
 
-        fig.add_shape(type="line", 
-                        x0=mean_value - i*std_dev, x1=mean_value - i*std_dev, 
-                        y0=0, y1=max(y),
-                        line=dict(color=color, width=1))
-
-        # Add sigma labels
         fig.add_annotation(x=mean_value + i*std_dev, y=max(y),
                             text=f'{i} sigma', showarrow=False, 
                             font=dict(color=color),
-                            ax=20, ay=-40)  # adjusting the angle and position of the annotation
-        fig.add_annotation(x=mean_value - i*std_dev, y=max(y),
-                            text=f'-{i} sigma', showarrow=False,
-                            font=dict(color=color),
-                            ax=-20, ay=-40)  # adjusting the angle and position of the annotation
+                            ax=20 if i >= 0 else -20, ay=-40)  # adjusting the angle and position of the annotation
 
-        # Update the layout
-        fig.update_layout(title=f'Probability Density for {year}',
-                          xaxis_title='Portfolio Value',
-                          yaxis_title='Density',
-                          xaxis=dict(tickmode='array', tickvals=xticks, ticktext=xticklabels),
-                          autosize=True,
-                          showlegend=False)
+        # Calculate the integral
+        if -5 < i < 5:  
+            probability_within_band = gaussian_kde_cdf(kde, mean_value + (i+1)*std_dev) - gaussian_kde_cdf(kde, mean_value + i*std_dev)
+        elif i == 5:  # Edge case: Calculate for the upper band μ + 5σ < X
+            probability_within_band = 1 - gaussian_kde_cdf(kde, mean_value + i*std_dev)
+        elif i == -5:  # Edge case: Calculate for the lower band X < μ - 5σ
+            probability_within_band = gaussian_kde_cdf(kde, mean_value + i*std_dev)
+            
+        # Update the probability dictionary
+        if i < 0:
+            probability_dict[f'P( μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%'
+        else:
+            probability_dict[f'P(μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%'
+
+    fig.update_layout(title=f'Probability Density for {year}',
+                        xaxis_title='Portfolio Value',
+                        yaxis_title='Density',
+                        xaxis=dict(tickmode='array', tickvals=xticks, ticktext=xticklabels),
+                        autosize=True,
+                        showlegend=False)
 
     # Display the figure in Streamlit
     st.plotly_chart(fig)
+    st.write(probability_dict)
+    for i in range(1, 6):
+        probability_within_range = gaussian_kde_cdf(kde, mean_value + i*std_dev) - gaussian_kde_cdf(kde, mean_value - i*std_dev)
+        st.write(f'Probability within +/-{i}σ: {probability_within_range*100:.2f}%')
+    st.write(f'Probability outside of +/-5σ: {100 - gaussian_kde_cdf(kde, mean_value + 5*std_dev)*100:.2f}%')
+

@@ -177,7 +177,7 @@ def display_portfolio_returns_analysis(portfolio_summary, asset_values):
             
     with st.container():
         if simulation_results:
-            analysis.plot_density_plots(simulation_results)
+            analysis.plot_density_plots(simulation_results, distribution_type=distribution)
             
     st.write("TODO: add more analysis here")
 
