@@ -342,10 +342,12 @@ def calculate_monthly_returns(data):
 
     return monthly_returns
 
+@st.cache_data
 def retrieve_historical_data(ticker, start_date, end_date):
     data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     return data
 
+@st.cache_data
 def retrieve_risk_free_rate(start_date, end_date):
     fred = Fred(api_key='XXX')
     risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date) / 100 / 252

@@ -5,10 +5,9 @@ from config import OPENAI_API_KEY, FRED_API_KEY
 
 def openai_interpret_portfolio_summary(portfolio_summary, openai_api_key=OPENAI_API_KEY):
     
-    print(f"openai api key: {openai_api_key}")
+    #print(f"openai api key: {openai_api_key}")
     
     if openai_api_key is not None:
-        print(f"uh... better not be none {openai_api_key}")
         openai.api_key = openai_api_key
         
         tickers = []

@@ -4,6 +4,7 @@ import traceback
 import utils
 import plots
 import interpret
+import analysis
 
 from config import OPENAI_API_KEY, FRED_API_KEY
 
@@ -101,7 +102,6 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
                 plots.plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio)
                 plots.plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, optimal_portfolio)  
                 
-                
             with col1:
                 # Initialize the API key and the flag in the session state if they are not already present
                 if 'openai_api_key' not in st.session_state:
@@ -124,10 +124,10 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
                 placeholder = st.empty()
 
                 if st.session_state.key_provided and st.session_state.openai_api_key != "None":
-                    print(f"OpenAI API Key: {st.session_state.openai_api_key} of type {type(st.session_state.openai_api_key)}")
+                    #print(f"OpenAI API Key: {st.session_state.openai_api_key} of type {type(st.session_state.openai_api_key)}")
                     
                     # Display a message indicating the application is waiting for the API to respond
-                    placeholder.markdown('<p style="color:red;">Waiting for API to respond...</p>', unsafe_allow_html=True)
+                    placeholder.markdown('<p style="color:red;">Waiting for OpenAI API to respond...</p>', unsafe_allow_html=True)
                     
                     interpret.openai_interpret_portfolio_summary(portfolio_summary, st.session_state.openai_api_key)
 
@@ -147,3 +147,35 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
         # send to web screen
         stack_trace = traceback.format_exc()
         st.write(stack_trace)
+        
+def display_portfolio_returns_analysis(portfolio_summary, asset_values):
+    st.write("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
+    
+    with st.container():
+        col1, col2, col3, col4 = st.columns([2,2,2,2])
+    
+        with col1:
+            subcol1, subcol2 = st.columns([1,1])
+            with subcol1:
+                if "n_simulations" not in st.session_state:
+                    st.session_state.n_simulations = 5000
+                
+                #TODO: add a button to execute the simulations
+                st.slider("Portfolio Simulations (higher more accurate, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
+        
+#            with subcol2:
+                distribution = st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), 
+                                        key="volatility_distribution", horizontal=True)
+                
+
+
+    with st.container():
+        if st.button("Run Simulations"):
+            simulation_results = analysis.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, distribution)
+            analysis.plot_simulation_results(simulation_results)
+            
+    st.write("TODO: add more analysis here")
+
+    with st.expander("NOT reality, assumes constant growth rate"):
+        display_asset_values(asset_values)
+        plots.plot_asset_values(asset_values)
