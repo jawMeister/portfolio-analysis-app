@@ -270,7 +270,7 @@ def plot_probability_density_for_a_given_year(year, values):
                         ax=20, ay=-40)  # adjusting the angle and position of the annotation
         
     # Colors for standard deviation lines
-    colors = ["#FF0000", "#FF4500", "#FF8C00", "#FFA500", "#FFD700"]
+    colors = ["#FFD700", "#FFA500","#FF8C00","#FF4500","#FF0000"]
     
     # Add lines for standard deviations
     for i in range(1, 6):
