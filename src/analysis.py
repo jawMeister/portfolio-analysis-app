@@ -43,7 +43,12 @@ def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
                 elif distribution == 'Cauchy':
                     asset_return = np.random.standard_cauchy(size=1)[0] * cov_returns[asset][asset] + mean_returns[asset]
                 
-                asset_value *= (1 + asset_return)
+                if asset_return > -1:
+                    asset_value *= (1 + asset_return)
+                else:
+                    asset_value = 0
+                
+                asset_value = max(asset_value, annual_contribution * weight)
                 asset_values.append(asset_value)
             
             asset_dataframes[asset] = pd.Series(asset_values)
@@ -90,6 +95,8 @@ def calculate_scatter_data(results):
 
     # Transpose the DataFrame to group data by year
     df_scatter = pd.DataFrame(scatter_data).T
+    print(f"df_scatter describe (0):\n{df_scatter.describe()}")
+    print(f"df_scatter min:\n{df_scatter.min()}")
 
     mean_per_year = df_scatter.mean(axis=1)
     std_devs_per_year = df_scatter.std(axis=1)
@@ -99,6 +106,11 @@ def calculate_scatter_data(results):
     df_scatter = df_scatter.stack().reset_index()
     df_scatter.columns = ['Year', 'Simulation', 'Portfolio Value']
     df_scatter['Z-Score'] = z_scores.stack().reset_index()[0]
+    
+    print(f"df_scatter head:\n{df_scatter.head()}")
+    print(f"df_scatter tail:\n{df_scatter.tail()}")
+    print(f"df_scatter shape:\n{df_scatter.shape}")
+    print(f"df_scatter describe:\n{df_scatter.describe()}")
 
     return df_scatter
 
@@ -110,7 +122,7 @@ def calculate_box_data(results):
     
     return df_box
 
-def plot_simulation_results_altair(results):
+def plot_simulation_results_altair(results, initial_investment):
     col1, col2, col3 = st.columns(3)
     start_time = time.time()
     with st.spinner('Calculating plots...'):
@@ -145,19 +157,19 @@ def plot_simulation_results_altair(results):
     with col2:
         scatter_chart = alt.Chart(df_scatter).mark_circle(size=5, opacity=0.5).encode(
             x='Year:Q',
-            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log')),
+            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log', domain=[initial_investment, max(df_scatter['Portfolio Value'])])),
             color='Z-Score:Q',
             tooltip=['Year:Q', 'Portfolio Value:Q', 'Z-Score:Q']
         ).properties(title='Portfolio Value Over Time (All Simulations)')
-        #st.altair_chart(scatter_chart) # not working at the moment
+        st.altair_chart(scatter_chart, use_container_width=True) # not working at the moment
 
     with col3:
         box_chart = alt.Chart(df_box).mark_boxplot().encode(
             x='Year:Q',
-            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log')),
+            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log', domain=[initial_investment, max(df_scatter['Portfolio Value'])])),
             tooltip=['Year:Q', 'Portfolio Value:Q']
         ).properties(title='Box plot of Portfolio Values Per Year')
-        #st.altair_chart(box_chart) not working at the moment
+        st.altair_chart(box_chart, use_container_width=True) 
         
 def plot_simulation_results(results):
     # Histogram of final portfolio values

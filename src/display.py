@@ -174,7 +174,7 @@ def display_portfolio_returns_analysis(portfolio_summary, asset_values):
         if st.button("Run Simulations"):
             simulation_results = analysis.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, distribution)
             #analysis.plot_simulation_results(simulation_results)
-            analysis.plot_simulation_results_altair(simulation_results)
+            analysis.plot_simulation_results_altair(simulation_results, portfolio_summary["initial_investment"])
             
     with st.container():
         if simulation_results:
