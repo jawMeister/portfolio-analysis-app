@@ -16,6 +16,7 @@ from scipy import stats
 from scipy.stats import t
 from scipy import integrate
 from scipy.integrate import quad
+import altair as alt
 
 #TODO: work on performance, need to explore other charting libraries, eg, Seaborn, Altair, Bokeh, etc.
 def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
@@ -71,12 +72,97 @@ def run_portfolio_simulations(portfolio_summary, n_simulations, distribution="T-
     print("The main sim loop took", end_time - start_time, "seconds to run")
     
     return results
+
+def calculate_histogram_data(results):
+    final_values = [result.sum(axis=1).iloc[-1] for result in results]
+    df_hist = pd.DataFrame(final_values, columns=['Final Portfolio Value'])
+    return df_hist
+
+def calculate_z_scores(x, mean_per_year, std_devs_per_year):
+    epsilon = 1e-8  # very small number to avoid division by zero
+    return abs((x - mean_per_year[x.name]) / (std_devs_per_year[x.name] + epsilon))
+
+def calculate_scatter_data(results):
+    scatter_data = []
+    for result in results:
+        yearly_portfolio_values = result.sum(axis=1)
+        scatter_data.append(yearly_portfolio_values)
+
+    # Transpose the DataFrame to group data by year
+    df_scatter = pd.DataFrame(scatter_data).T
+
+    mean_per_year = df_scatter.mean(axis=1)
+    std_devs_per_year = df_scatter.std(axis=1)
+    
+    z_scores = df_scatter.apply(calculate_z_scores, args=(mean_per_year, std_devs_per_year,), axis=1)
+    
+    df_scatter = df_scatter.stack().reset_index()
+    df_scatter.columns = ['Year', 'Simulation', 'Portfolio Value']
+    df_scatter['Z-Score'] = z_scores.stack().reset_index()[0]
+
+    return df_scatter
+
+def calculate_box_data(results):
+    aggregated_results = pd.concat([result.sum(axis=1) for result in results], axis=1)
+    df_box = aggregated_results.reset_index().melt(id_vars='index', var_name='Simulation', value_name='Portfolio Value')
+    df_box['Year'] = df_box['index']
+    df_box.drop(columns='index', inplace=True)
+    
+    return df_box
+
+def plot_simulation_results_altair(results):
+    col1, col2, col3 = st.columns(3)
+    start_time = time.time()
+    with st.spinner('Calculating plots...'):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(calculate_histogram_data, results),
+                executor.submit(calculate_scatter_data, results),
+                executor.submit(calculate_box_data, results)
+            ]
+            
+            for future in concurrent.futures.as_completed(futures):
+                if future == futures[0]:
+                    df_hist = future.result()
+                    end_time = time.time()
+                    print("The histogram took", end_time - start_time, "seconds to run")
+                elif future == futures[1]:
+                    df_scatter = future.result()
+                    end_time = time.time()
+                    print("The scatter took", end_time - start_time, "seconds to run")
+                else:
+                    df_box = future.result()
+                    end_time = time.time()
+                    print("The box plot took", end_time - start_time, "seconds to run")
+            
+    with col1:
+        hist_chart = alt.Chart(df_hist).mark_bar().encode(
+            alt.X("Final Portfolio Value:Q", bin=alt.Bin(maxbins=250)),
+            y='count()',
+        )
+        st.altair_chart(hist_chart, use_container_width=True)
+
+    with col2:
+        scatter_chart = alt.Chart(df_scatter).mark_circle(size=5, opacity=0.5).encode(
+            x='Year:Q',
+            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log')),
+            color='Z-Score:Q',
+            tooltip=['Year:Q', 'Portfolio Value:Q', 'Z-Score:Q']
+        ).properties(title='Portfolio Value Over Time (All Simulations)')
+        #st.altair_chart(scatter_chart) # not working at the moment
+
+    with col3:
+        box_chart = alt.Chart(df_box).mark_boxplot().encode(
+            x='Year:Q',
+            y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log')),
+            tooltip=['Year:Q', 'Portfolio Value:Q']
+        ).properties(title='Box plot of Portfolio Values Per Year')
+        #st.altair_chart(box_chart) not working at the moment
         
 def plot_simulation_results(results):
     # Histogram of final portfolio values
     col1, col2, col3 = st.columns(3)
     
-
     with col1:
         with st.spinner('Calculating Histogram of Final Portfolio Values...'):
             start_time = time.time()
@@ -272,6 +358,7 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_in
         # Calculate the integral
         if -5 < i < 5:
             probability_within_band = gaussian_kde_cdf(kde, mean_value + (i+1)*std_dev) - gaussian_kde_cdf(kde, mean_value + i*std_dev)
+            # although xticks create with range(-5, 6), the index is 0-10, so have to offset i by 5 to get the correct xtick for a sigma
             results.append((i, i+1, probability_within_band, xticks[i+5], xticks[i+6]))
         elif i == 5:  # Edge case: Calculate for the upper band μ + 5σ < X
             probability_within_band = 1 - gaussian_kde_cdf(kde, mean_value + i*std_dev)
@@ -279,16 +366,6 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_in
         elif i == -5:  # Edge case: Calculate for the lower band X < μ - 5σ
             probability_within_band = gaussian_kde_cdf(kde, mean_value + i*std_dev)
             results.append((np.nan, i+1, probability_within_band, np.nan, xticks[i+6]))
-
-
-        # Update the probability dictionary
-        #if i < 0:
-            #probability_dict[f'P( μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%, lower edge return: {return_value_lower_edge*100:.2f}%, upper edge return: {return_value_upper_edge*100:.2f}%'
-        #    results.append((i, i+1, probability_within_band, return_value_lower_edge, return_value_upper_edge))
-        #else:
-            #probability_dict[f'P(μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%, lower edge return: {return_value_lower_edge*100:.2f}%, upper edge return: {return_value_upper_edge*100:.2f}%'
-        #    results.append((i, i+1, probability_within_band, return_value_lower_edge, return_value_upper_edge))
-            
             
     fig.update_layout(title=f'Probability Density for {year}',
                         xaxis_title='Portfolio Value',
@@ -297,20 +374,7 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_in
                         autosize=True,
                         showlegend=False)
 
-    # Create probability_dict at the end
-    #probability_dict = {}
-    #for lower_sigma, upper_sigma, probability, lower_edge_return, upper_edge_return in results:
-    #    probability_dict[f'P( μ + {lower_sigma}σ < X < μ + {upper_sigma}σ)'] = \
-    #        f'{probability*100:.2f}%, lower edge return: {lower_edge_return*100:.2f}%, upper edge return: {upper_edge_return*100:.2f}%'
-            
-    # Display the figure in Streamlit
     st.plotly_chart(fig)
-    #st.write(probability_dict)
-    #for i in range(1, 6):
-    #    probability_within_range = gaussian_kde_cdf(kde, mean_value + i*std_dev) - gaussian_kde_cdf(kde, mean_value - i*std_dev)
-    #    st.write(f'Probability within +/-{i}σ: {probability_within_range*100:.2f}%')
-        
-    #st.write(f'Probability outside of +/-5σ: {100 - gaussian_kde_cdf(kde, mean_value + 5*std_dev)*100:.2f}%')
 
     return results, xticks
 
