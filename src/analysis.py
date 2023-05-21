@@ -1,6 +1,7 @@
 
 import plotly.graph_objects as go
 from plotly import figure_factory as ff
+import plotly.io as pio
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,34 @@ from scipy.stats import t
 from scipy import integrate
 from scipy.integrate import quad
 import altair as alt
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+import base64
+from PIL import Image
+from io import BytesIO
+
+# attempting to set the matplotlib style to the streamlit default
+plt.rcParams['text.color'] = '#E0E0E0'  # Setting the text color to a light gray
+plt.rcParams['axes.labelcolor'] = '#E0E0E0'  # Setting the color of the axis labels
+plt.rcParams['axes.edgecolor'] = '#E0E0E0'  # Setting the color of the axis edges
+plt.rcParams['xtick.color'] = '#E0E0E0'  # Setting the color of the tick labels on the x-axis
+plt.rcParams['ytick.color'] = '#E0E0E0'  # Setting the color of the tick labels on the y-axis
+plt.rcParams['figure.facecolor'] = '#1F1F1F'  # Setting the color of the figure face
+plt.rcParams['axes.facecolor'] = '#1F1F1F'  # Setting the color of the axis face
+plt.rcParams['figure.autolayout'] = True  # Adjusting the subplot parameters to give the specified padding
+plt.rcParams['font.size'] = 6  # Adjusting the font size
+mpl.rcParams['axes.linewidth'] = 0.2
+mpl.rcParams['lines.linewidth'] = 0.5
+
+# Since IBM Plex Sans may not be installed in your machine, we are using a standard font 'DejaVu Sans'
+plt.rcParams['font.family'] = 'DejaVu Sans'
+
+# And finally for the plot color cycle, Streamlit uses a specific color cycle, 
+# here we are using a common darker color palette which is the 'Dark2' from matplotlib
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=plt.cm.Dark2.colors)
 
 #TODO: work on performance, need to explore other charting libraries, eg, Seaborn, Altair, Bokeh, etc.
 def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
@@ -95,8 +124,6 @@ def calculate_scatter_data(results):
 
     # Transpose the DataFrame to group data by year
     df_scatter = pd.DataFrame(scatter_data).T
-    print(f"df_scatter describe (0):\n{df_scatter.describe()}")
-    print(f"df_scatter min:\n{df_scatter.min()}")
 
     mean_per_year = df_scatter.mean(axis=1)
     std_devs_per_year = df_scatter.std(axis=1)
@@ -106,11 +133,6 @@ def calculate_scatter_data(results):
     df_scatter = df_scatter.stack().reset_index()
     df_scatter.columns = ['Year', 'Simulation', 'Portfolio Value']
     df_scatter['Z-Score'] = z_scores.stack().reset_index()[0]
-    
-    print(f"df_scatter head:\n{df_scatter.head()}")
-    print(f"df_scatter tail:\n{df_scatter.tail()}")
-    print(f"df_scatter shape:\n{df_scatter.shape}")
-    print(f"df_scatter describe:\n{df_scatter.describe()}")
 
     return df_scatter
 
@@ -149,29 +171,170 @@ def plot_simulation_results_altair(results, initial_investment):
             
     with col1:
         hist_chart = alt.Chart(df_hist).mark_bar().encode(
-            alt.X("Final Portfolio Value:Q", bin=alt.Bin(maxbins=250)),
+            alt.X("Final Portfolio Value:Q", bin=alt.Bin(maxbins=100)),
             y='count()',
         )
         st.altair_chart(hist_chart, use_container_width=True)
 
     with col2:
-        scatter_chart = alt.Chart(df_scatter).mark_circle(size=5, opacity=0.5).encode(
-            x='Year:Q',
+        scatter_chart = alt.Chart(df_scatter).mark_circle(size=35).encode(
+            x=alt.X('Year:Q'),
             y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log', domain=[initial_investment, max(df_scatter['Portfolio Value'])])),
-            color='Z-Score:Q',
+            color=alt.Color('Z-Score:Q', scale=alt.Scale(scheme='magma', reverse=True)),
             tooltip=['Year:Q', 'Portfolio Value:Q', 'Z-Score:Q']
         ).properties(title='Portfolio Value Over Time (All Simulations)')
         st.altair_chart(scatter_chart, use_container_width=True) # not working at the moment
 
     with col3:
-        box_chart = alt.Chart(df_box).mark_boxplot().encode(
-            x='Year:Q',
+        box_chart = alt.Chart(df_box).mark_boxplot(size=25 , extent=0.5).encode(
+            x=alt.X('Year:Q', scale=alt.Scale(domain=[min(df_box['Year']), max(df_box['Year'])])),
             y=alt.Y('Portfolio Value:Q', scale=alt.Scale(type='log', domain=[initial_investment, max(df_scatter['Portfolio Value'])])),
             tooltip=['Year:Q', 'Portfolio Value:Q']
-        ).properties(title='Box plot of Portfolio Values Per Year')
+        ).properties(
+            title='Box plot of Portfolio Values Per Year'
+        )
+        
         st.altair_chart(box_chart, use_container_width=True) 
         
-def plot_simulation_results(results):
+def plot_simulation_results_seaborn(results, initial_investment):
+    col1, col2, col3 = st.columns(3)
+    start_time = time.time()
+    with st.spinner('Calculating plots...'):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(calculate_histogram_data, results),
+                executor.submit(calculate_scatter_data, results),
+                executor.submit(calculate_box_data, results)
+            ]
+            
+            for future in concurrent.futures.as_completed(futures):
+                if future == futures[0]:
+                    df_hist = future.result()
+                    end_time = time.time()
+                    print("The histogram took", end_time - start_time, "seconds to run")
+                elif future == futures[1]:
+                    df_scatter = future.result()
+                    end_time = time.time()
+                    print("The scatter took", end_time - start_time, "seconds to run")
+                else:
+                    df_box = future.result()
+                    end_time = time.time()
+                    print("The box plot took", end_time - start_time, "seconds to run")
+    
+    with col1:
+        fig1, ax1 = plt.subplots(figsize=(6,4))
+        sns.histplot(df_hist['Final Portfolio Value'], bins=100, kde=True, ax=ax1, color='#ff2e63')
+        ax1.set_xlabel('Final Portfolio Value')
+        ax1.set_ylabel('Count')
+        st.pyplot(fig1)
+
+    with col2:
+        fig2, ax2 = plt.subplots(figsize=(6,4))
+        cmap = sns.cubehelix_palette(start=2, rot=0, dark=0.2, light=0.8, reverse=True, as_cmap=True)
+        scatter_plot = sns.scatterplot(x='Year', y='Portfolio Value', hue='Z-Score', data=df_scatter, palette='magma', edgecolor=None, alpha=0.5, ax=ax2)
+        scatter_plot.set(yscale="log")
+        scatter_plot.set_title('Portfolio Value Over Time (All Simulations)')
+        st.pyplot(fig2)
+
+    with col3:
+        fig3, ax3 = plt.subplots(figsize=(6,4))
+        box_plot = sns.boxplot(x='Year', y='Portfolio Value', data=df_box, ax=ax3, color='#ff2e63')
+        box_plot.set(yscale="log")
+        box_plot.set_title('Box plot of Portfolio Values Per Year')
+        st.pyplot(fig3)
+
+
+def plot_simulation_results_plotly(results, initial_investment):
+    col1, col2, col3 = st.columns(3)
+        
+    start_time = time.time()
+    with st.spinner('Calculating plots...'):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(calculate_histogram_data, results),
+                executor.submit(calculate_scatter_data, results),
+                executor.submit(calculate_box_data, results)
+            ]
+
+            for future in concurrent.futures.as_completed(futures):
+                if future == futures[0]:
+                    df_hist = future.result()
+                    end_time = time.time()
+                    print("The histogram took", end_time - start_time, "seconds to run")
+                elif future == futures[1]:
+                    df_scatter = future.result()
+                    end_time = time.time()
+                    print("The scatter took", end_time - start_time, "seconds to run")
+                else:
+                    df_box = future.result()
+                    end_time = time.time()
+                    print("The box plot took", end_time - start_time, "seconds to run")
+
+    with col1:
+        with st.spinner('Calculating Histogram of Final Portfolio Values...'):
+            fig1 = go.Figure()
+            fig1.add_trace(go.Histogram(x=df_hist["Final Portfolio Value"], nbinsx=100))
+            fig1.update_layout(bargap=0.1)
+            st.plotly_chart(fig1)
+
+    with col2:  
+        with st.spinner('Calculating Scatter Plot of Simulated Portfolio Values...'):
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scattergl(x=df_scatter["Year"], y=df_scatter["Portfolio Value"], mode='markers',
+                                        marker=dict(color=df_scatter["Z-Score"], colorscale='Magma', size=5, opacity=0.5)))
+            fig2.update_yaxes(type="log")
+            st.plotly_chart(fig2)
+    with col3:
+        with st.spinner('Calculating Scatter Box Plot of Simulated Portfolio Values...'):
+            fig3 = go.Figure()
+            fig3.add_trace(go.Box(y=df_box["Portfolio Value"], x=df_box["Year"]))
+            fig3.update_yaxes(type="log")
+            st.plotly_chart(fig3)
+            
+def plot_simulation_results_plotly_static(results, initial_investment):
+    start_time = time.time()
+    with st.spinner('Calculating plots...'):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(calculate_histogram_data, results),
+                executor.submit(calculate_scatter_data, results),
+                executor.submit(calculate_box_data, results)
+            ]
+
+            for future in concurrent.futures.as_completed(futures):
+                if future == futures[0]:
+                    df_hist = future.result()
+                    end_time = time.time()
+                    print("The histogram took", end_time - start_time, "seconds to run")
+                elif future == futures[1]:
+                    df_scatter = future.result()
+                    end_time = time.time()
+                    print("The scatter took", end_time - start_time, "seconds to run")
+                else:
+                    df_box = future.result()
+                    end_time = time.time()
+                    print("The box plot took", end_time - start_time, "seconds to run")
+
+    fig1 = go.Figure()
+    fig1.add_trace(go.Histogram(x=df_hist["Final Portfolio Value"], nbinsx=100))
+    fig1.update_layout(bargap=0.1)
+    img1 = pio.to_image(fig1, format="png")
+    st.image(img1, use_column_width=True, caption="Histogram")
+
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=df_scatter["Year"], y=df_scatter["Portfolio Value"], mode='markers',
+                                marker=dict(color=df_scatter["Z-Score"], colorscale='Magma', size=5, opacity=0.5)))
+    fig2.update_yaxes(type="log")
+    img2 = pio.to_image(fig2, format="png")
+    st.image(img2, use_column_width=True, caption="Scatter Plot")
+
+    fig3 = go.Figure()
+    fig3.add_trace(go.Box(y=df_box["Portfolio Value"], x=df_box["Year"]))
+    fig3.update_yaxes(type="log")
+    img3 = pio.to_image(fig3, format="png")
+    st.image(img3, use_column_width=True, caption="Box Plot")
+    
+def plot_simulation_results_v0(results):
     # Histogram of final portfolio values
     col1, col2, col3 = st.columns(3)
     
