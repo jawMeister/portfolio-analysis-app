@@ -177,8 +177,8 @@ def display_portfolio_returns_analysis(portfolio_summary, asset_values):
             
     with st.container():
         if simulation_results:
-            analysis.plot_density_plots(simulation_results, distribution_type=distribution)
-            
+            #analysis.plot_density_plots(simulation_results)
+            analysis.calculate_returns(simulation_results, portfolio_summary["initial_investment"], portfolio_summary["yearly_contribution"])
     st.write("TODO: add more analysis here")
 
     with st.expander("NOT reality, assumes constant growth rate"):

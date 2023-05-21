@@ -18,7 +18,6 @@ from scipy import integrate
 from scipy.integrate import quad
 
 #TODO: work on performance, need to explore other charting libraries, eg, Seaborn, Altair, Bokeh, etc.
-# function to simulate future portfolio values
 def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
     # initialize asset values with initial investments
     weights = portfolio_summary["weights"]
@@ -79,19 +78,12 @@ def plot_simulation_results(results):
     
 
     with col1:
-#        placeholder = st.empty()
         with st.spinner('Calculating Histogram of Final Portfolio Values...'):
-#            placeholder.markdown("Calculating Histogram of Final Portfolio Values...")
             start_time = time.time()
 
             # Histogram of final portfolio values
             final_values = [result.sum(axis=1).iloc[-1] for result in results]
-            
-# running out of memory in the browser when calculating std dev and mean
-#            std_dev = np.std(final_values)
-#            mean_value = np.mean(final_values)
-#            lower_bound = mean_value - 3*std_dev
-#            upper_bound = mean_value + 3*std_dev
+
 
             hist_fig = go.Figure(data=[go.Histogram(x=final_values, nbinsx=250, 
                                             marker=dict(
@@ -99,13 +91,6 @@ def plot_simulation_results(results):
                                                 line=dict(width=1)
                                             ))])
             
-
-#            for i in range(1, 4):
-#                hist_fig.add_shape(type="line", x0=mean_value + i*std_dev, x1=mean_value + i*std_dev, 
-#                                line=dict(color="LightSeaGreen", width=2))
-#                hist_fig.add_shape(type="line", x0=mean_value - i*std_dev, x1=mean_value - i*std_dev, 
-#                                line=dict(color="LightSeaGreen", width=2))
-        
             hist_fig.update_layout(title_text='Histogram of Final Portfolio Values',
                                 xaxis_title='Portfolio Value',
                                 yaxis_title='Frequency',
@@ -115,16 +100,13 @@ def plot_simulation_results(results):
             
             start_time = time.time()
             st.plotly_chart(hist_fig)
-#            st.write(f"Mean: ${mean_value:,.2f}, Standard Deviation: ${std_dev:,.2f}, \
-#                        3x Standard Deviation Lower/Uppwer: ${lower_bound:,.2f}-${upper_bound:,.2f}")
+
             
             end_time = time.time()
             print("The histogram took", end_time - start_time, "seconds to render")
   
     with col2:  
         with st.spinner('Calculating Scatter Plot of Simulated Portfolio Values...'):
-#        placeholder = st.empty()
-#        placeholder.markdown("Calculating Scatter Plot of Simulated Portfolio Values...")
             start_time = time.time()
             # Scatter plot of portfolio value over time for all simulations
             scatter_fig = go.Figure()
@@ -198,7 +180,7 @@ def plot_simulation_results(results):
             print("The box plot took", end_time - start_time, "seconds to render")
 
 
-def plot_density_plots(results, distribution_type):
+def plot_density_plots(results):
     N = len(results[0])
 
     # Index of the middle year
@@ -209,13 +191,13 @@ def plot_density_plots(results, distribution_type):
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            plot_probability_density_for_a_given_year_vIntegral("Year 1", [result.iloc[1].sum() for result in results], distribution_type)
+            plot_probability_density_for_a_given_year_vIntegral("Year 1", [result.iloc[1].sum() for result in results])
             
         with col2:
-            plot_probability_density_for_a_given_year_vIntegral(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results], distribution_type)
+            plot_probability_density_for_a_given_year_vIntegral(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results])
             
         with col3:
-            plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', [result.iloc[-1].sum() for result in results], distribution_type)
+            plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', [result.iloc[-1].sum() for result in results])
 
 def format_currency(value):
     # Store the sign of the value to restore it later
@@ -241,8 +223,7 @@ def gaussian_kde_cdf(kde, x):
     lower_bound = max(mean_value - N*std_dev, -np.inf)
     return quad(kde.evaluate, lower_bound, x)[0]
 
-def plot_probability_density_for_a_given_year_vIntegral(year, values, distribution_type):
-        
+def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_investment):
     # Create the KDE
     kde = stats.gaussian_kde(values)
 
@@ -272,8 +253,8 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, distributi
                     line=dict(color="LightBlue", width=1))
 
     colors = ["#FFD700", "#FFA500","#FF8C00","#FF4500","#FF0000"]
-    probability_dict = {}
 
+    results = []
     # Add sigma labels and calculate probability ranges
     for i in range(-5, 6):
         color = colors[abs(i)-1] if i != 0 else "LightBlue"
@@ -289,19 +270,26 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, distributi
                             ax=20 if i >= 0 else -20, ay=-40)  # adjusting the angle and position of the annotation
 
         # Calculate the integral
-        if -5 < i < 5:  
+        if -5 < i < 5:
             probability_within_band = gaussian_kde_cdf(kde, mean_value + (i+1)*std_dev) - gaussian_kde_cdf(kde, mean_value + i*std_dev)
+            results.append((i, i+1, probability_within_band, xticks[i+5], xticks[i+6]))
         elif i == 5:  # Edge case: Calculate for the upper band μ + 5σ < X
             probability_within_band = 1 - gaussian_kde_cdf(kde, mean_value + i*std_dev)
+            results.append((i, np.nan, probability_within_band, xticks[i+5], np.nan))
         elif i == -5:  # Edge case: Calculate for the lower band X < μ - 5σ
             probability_within_band = gaussian_kde_cdf(kde, mean_value + i*std_dev)
-            
-        # Update the probability dictionary
-        if i < 0:
-            probability_dict[f'P( μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%'
-        else:
-            probability_dict[f'P(μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%'
+            results.append((np.nan, i+1, probability_within_band, np.nan, xticks[i+6]))
 
+
+        # Update the probability dictionary
+        #if i < 0:
+            #probability_dict[f'P( μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%, lower edge return: {return_value_lower_edge*100:.2f}%, upper edge return: {return_value_upper_edge*100:.2f}%'
+        #    results.append((i, i+1, probability_within_band, return_value_lower_edge, return_value_upper_edge))
+        #else:
+            #probability_dict[f'P(μ + {i}σ < X < μ + {i+1}σ)'] = f'{probability_within_band*100:.2f}%, lower edge return: {return_value_lower_edge*100:.2f}%, upper edge return: {return_value_upper_edge*100:.2f}%'
+        #    results.append((i, i+1, probability_within_band, return_value_lower_edge, return_value_upper_edge))
+            
+            
     fig.update_layout(title=f'Probability Density for {year}',
                         xaxis_title='Portfolio Value',
                         yaxis_title='Density',
@@ -309,11 +297,73 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, distributi
                         autosize=True,
                         showlegend=False)
 
+    # Create probability_dict at the end
+    #probability_dict = {}
+    #for lower_sigma, upper_sigma, probability, lower_edge_return, upper_edge_return in results:
+    #    probability_dict[f'P( μ + {lower_sigma}σ < X < μ + {upper_sigma}σ)'] = \
+    #        f'{probability*100:.2f}%, lower edge return: {lower_edge_return*100:.2f}%, upper edge return: {upper_edge_return*100:.2f}%'
+            
     # Display the figure in Streamlit
     st.plotly_chart(fig)
-    st.write(probability_dict)
-    for i in range(1, 6):
-        probability_within_range = gaussian_kde_cdf(kde, mean_value + i*std_dev) - gaussian_kde_cdf(kde, mean_value - i*std_dev)
-        st.write(f'Probability within +/-{i}σ: {probability_within_range*100:.2f}%')
-    st.write(f'Probability outside of +/-5σ: {100 - gaussian_kde_cdf(kde, mean_value + 5*std_dev)*100:.2f}%')
+    #st.write(probability_dict)
+    #for i in range(1, 6):
+    #    probability_within_range = gaussian_kde_cdf(kde, mean_value + i*std_dev) - gaussian_kde_cdf(kde, mean_value - i*std_dev)
+    #    st.write(f'Probability within +/-{i}σ: {probability_within_range*100:.2f}%')
+        
+    #st.write(f'Probability outside of +/-5σ: {100 - gaussian_kde_cdf(kde, mean_value + 5*std_dev)*100:.2f}%')
+
+    return results, xticks
+
+
+def calculate_returns(results, initial_investment, yearly_contribution):
+    N = len(results[0])
+    mid_index = N // 2
+
+    with st.spinner('Calculating Probability Density Plots...'):
+        col1, col2, col3 = st.columns(3)
+        
+        probability_bands = []
+        with col1:
+            values = [result.iloc[1].sum() for result in results]
+            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral("Year 1", values, initial_investment)
+            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, 1)
+            st.write(returns_dict)
+            
+        with col2:
+            values = [result.iloc[mid_index].sum() for result in results]
+            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral(f'Year {mid_index}', values, initial_investment)
+            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, mid_index)
+            st.write(returns_dict)
+            
+        with col3:
+            values = [result.iloc[-1].sum() for result in results]
+            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', values, initial_investment)
+            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, N)
+            st.write(returns_dict)
+
+
+def calculate_returns_for_probability_bands(probability_bands, initial_investment, annual_contribution, years):
+    total_investment = initial_investment + annual_contribution * years
+    returns_dict = {}
+    for lower_sigma, upper_sigma, probability, lower_edge_value, upper_edge_value in probability_bands:
+        if lower_edge_value is not np.nan:
+            lower_edge_return = (lower_edge_value - total_investment) / total_investment
+        else:
+            lower_edge_return = np.nan
+        if upper_edge_value is not np.nan:
+            upper_edge_return = (upper_edge_value - total_investment) / total_investment
+        else:
+            upper_edge_return = np.nan
+        returns_dict[f'P( μ + {lower_sigma}σ < X < μ + {upper_sigma}σ)'] = f'{probability*100:.2f}%, lower edge return: {lower_edge_return*100:.2f}%, upper edge return: {upper_edge_return*100:.2f}%'
+    return returns_dict
+
+
+def calculate_probability_within_band(probability_bands, lower_sigma, upper_sigma):
+    total_probability = 0
+    for current_lower_sigma, current_upper_sigma, probability, _, _ in probability_bands:
+        if current_lower_sigma >= lower_sigma and current_upper_sigma <= upper_sigma:
+            total_probability += probability
+    
+    return total_probability
+
 
