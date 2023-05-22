@@ -149,29 +149,31 @@ def display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optim
         st.write(stack_trace)
         
 def display_portfolio_returns_analysis(portfolio_summary, asset_values):
-    st.write("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
+    st.subheader("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
     simulation_results = None
     
     with st.container():
         col1, col2, col3, col4 = st.columns([2,2,2,2])
     
         with col1:
-            subcol1, subcol2 = st.columns([1,1])
+            subcol1, subcol2, subcol3 = st.columns([2,1,1])
             with subcol1:
+                distribution = st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), key="volatility_distribution")
+                                
                 if "n_simulations" not in st.session_state:
                     st.session_state.n_simulations = 5000
                 
                 #TODO: add a button to execute the simulations
                 st.slider("Portfolio Simulations (higher more accurate, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
         
-#            with subcol2:
-                distribution = st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), 
-                                        key="volatility_distribution", horizontal=True)
+
+
+                run_simulation = st.button("Run Simulations", use_container_width=True)
                 
 
 
     with st.container():
-        if st.button("Run Simulations"):
+        if run_simulation:
             simulation_results = analysis.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, distribution)
             #analysis.plot_simulation_results(simulation_results)
             analysis.plot_simulation_results_plotly(simulation_results, portfolio_summary["initial_investment"])
@@ -180,8 +182,8 @@ def display_portfolio_returns_analysis(portfolio_summary, asset_values):
         if simulation_results:
             #analysis.plot_density_plots(simulation_results)
             analysis.calculate_returns(simulation_results, portfolio_summary["initial_investment"], portfolio_summary["yearly_contribution"])
-    st.write("TODO: add more analysis here")
+    #st.write("TODO: add more analysis here")
 
-    with st.expander("NOT reality, assumes constant growth rate"):
-        display_asset_values(asset_values)
-        plots.plot_asset_values(asset_values)
+    #with st.expander("NOT reality, assumes constant growth rate"):
+    #    display_asset_values(asset_values)
+    #    plots.plot_asset_values(asset_values)

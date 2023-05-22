@@ -27,6 +27,8 @@ import base64
 from PIL import Image
 from io import BytesIO
 
+from stqdm import stqdm
+
 # attempting to set the matplotlib style to the streamlit default
 plt.rcParams['text.color'] = '#E0E0E0'  # Setting the text color to a light gray
 plt.rcParams['axes.labelcolor'] = '#E0E0E0'  # Setting the color of the axis labels
@@ -92,15 +94,17 @@ def run_portfolio_simulations(portfolio_summary, n_simulations, distribution="T-
     print(f"Number of cores: {n_cores}")
     
     results = []
-    with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-        futures = []
-        for _ in range(n_simulations):
-            future = executor.submit(simulate_portfolio, portfolio_summary, distribution)
-            futures.append(future)
-            
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            results.append(result)
+    with stqdm(total=n_simulations) as pbar:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+            futures = []
+            for _ in range(n_simulations):
+                future = executor.submit(simulate_portfolio, portfolio_summary, distribution)
+                futures.append(future)
+                
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                results.append(result)
+                pbar.update(1)
         
     end_time = time.time()
     print("The main sim loop took", end_time - start_time, "seconds to run")
@@ -274,21 +278,38 @@ def plot_simulation_results_plotly(results, initial_investment):
         with st.spinner('Calculating Histogram of Final Portfolio Values...'):
             fig1 = go.Figure()
             fig1.add_trace(go.Histogram(x=df_hist["Final Portfolio Value"], nbinsx=100))
-            fig1.update_layout(bargap=0.1)
+            fig1.update_layout(title_text='Histogram of Final Portfolio Values',
+                    xaxis_title='Portfolio Value',
+                    yaxis_title='Frequency',
+                    xaxis_tickprefix="$",
+                    bargap=0.1)
             st.plotly_chart(fig1)
 
     with col2:  
         with st.spinner('Calculating Scatter Plot of Simulated Portfolio Values...'):
             fig2 = go.Figure()
+
             fig2.add_trace(go.Scattergl(x=df_scatter["Year"], y=df_scatter["Portfolio Value"], mode='markers',
-                                        marker=dict(color=df_scatter["Z-Score"], colorscale='Magma', size=5, opacity=0.5)))
-            fig2.update_yaxes(type="log")
+                                        marker=dict(color=df_scatter["Z-Score"], colorscale='inferno', size=5, opacity=0.5, showscale=True, colorbar=dict(title='Absolute Z-score'))))
+            fig2.update_layout(title_text='Portfolio Value Over Time (All Simulations)',
+                                    xaxis_title='Year',
+                                    yaxis_title='Portfolio Value',
+                                    yaxis_type="log",
+                                    yaxis_tickprefix="$",
+                                    showlegend=False)
+
             st.plotly_chart(fig2)
+            
     with col3:
         with st.spinner('Calculating Scatter Box Plot of Simulated Portfolio Values...'):
             fig3 = go.Figure()
             fig3.add_trace(go.Box(y=df_box["Portfolio Value"], x=df_box["Year"]))
-            fig3.update_yaxes(type="log")
+            fig3.update_layout(title_text='Box plot of Portfolio Values Per Year',
+                    yaxis_title='Portfolio Value',
+                    yaxis_type="log",
+                    yaxis_tickprefix="$",
+                    showlegend=False,
+                    xaxis_title='Year')
             st.plotly_chart(fig3)
             
 def plot_simulation_results_plotly_static(results, initial_investment):
@@ -430,7 +451,8 @@ def plot_simulation_results_v0(results):
             box_fig.update_layout(title_text='Box plot of Portfolio Values Per Year',
                                 yaxis_title='Portfolio Value',
                                 yaxis_type="log",
-                                yaxis_tickprefix="$")
+                                yaxis_tickprefix="$",
+                                xaxis_title='Year')
             end_time = time.time()
             print("The box plot took", end_time - start_time, "seconds to calculate")
 
@@ -448,18 +470,22 @@ def plot_density_plots(results):
     mid_index = N // 2
 
     with st.spinner('Calculating Probability Density Plots...'):
-        # Extract the portfolio values for years 1, N/2, and N
+
+            # Extract the portfolio values for years 1, N/2, and N            
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            plot_probability_density_for_a_given_year_vIntegral("Year 1", [result.iloc[1].sum() for result in results])
+            _, _, fig1 = plot_probability_density_for_a_given_year_vIntegral("Year 1", [result.iloc[1].sum() for result in results])
+            st.plotly_chart(fig1)
             
         with col2:
-            plot_probability_density_for_a_given_year_vIntegral(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results])
+            _, _, fig2 = plot_probability_density_for_a_given_year_vIntegral(f'Year {N//2}', [result.iloc[mid_index].sum() for result in results])
+            st.plotly_chart(fig2)
             
         with col3:
-            plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', [result.iloc[-1].sum() for result in results])
-
+            _, _, fig3 = plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', [result.iloc[-1].sum() for result in results])
+            st.plotly_chart(fig3)
+            
 def format_currency(value):
     # Store the sign of the value to restore it later
     sign = -1 if value < 0 else 1
@@ -484,7 +510,7 @@ def gaussian_kde_cdf(kde, x):
     lower_bound = max(mean_value - N*std_dev, -np.inf)
     return quad(kde.evaluate, lower_bound, x)[0]
 
-def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_investment):
+def plot_probability_density_for_a_given_year_vIntegral(year, values):
     # Create the KDE
     kde = stats.gaussian_kde(values)
 
@@ -549,37 +575,43 @@ def plot_probability_density_for_a_given_year_vIntegral(year, values, initial_in
                         autosize=True,
                         showlegend=False)
 
-    st.plotly_chart(fig)
-
-    return results, xticks
+    return results, xticks, fig
 
 
 def calculate_returns(results, initial_investment, yearly_contribution):
     N = len(results[0])
     mid_index = N // 2
+    years_to_plot = [1, mid_index, N-1]
+    n_cores = multiprocessing.cpu_count()
 
     with st.spinner('Calculating Probability Density Plots...'):
+        pdf_results = []
+        with stqdm(total=len(years_to_plot)) as pbar:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=min(len(years_to_plot), n_cores)) as executor:
+                futures = []
+                for year in years_to_plot:
+                    print(f"Calculating PDF for year {year}")
+                    values = [result.iloc[year].sum() for result in results]
+                    future = executor.submit(plot_probability_density_for_a_given_year_vIntegral, f"Year {year}", values)
+                    futures.append(future)
+                    
+                for future in concurrent.futures.as_completed(futures):
+                    pdf_results.append(future.result())
+                    pbar.update(1)
+    
+    pdf_results.sort()  # Sort results by year
+    
+    with st.spinner('Plotting Probability Density Plots...'):
         col1, col2, col3 = st.columns(3)
-        
-        probability_bands = []
-        with col1:
-            values = [result.iloc[1].sum() for result in results]
-            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral("Year 1", values, initial_investment)
-            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, 1)
-            st.write(returns_dict)
-            
-        with col2:
-            values = [result.iloc[mid_index].sum() for result in results]
-            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral(f'Year {mid_index}', values, initial_investment)
-            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, mid_index)
-            st.write(returns_dict)
-            
-        with col3:
-            values = [result.iloc[-1].sum() for result in results]
-            probability_bands, portfolio_values_at_sigma = plot_probability_density_for_a_given_year_vIntegral(f'Year {N}', values, initial_investment)
-            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, N)
-            st.write(returns_dict)
+        columns = [col1, col2, col3]
 
+        for i, col in enumerate(columns):
+            print(f"Plotting PDF for year {years_to_plot[i]}")
+            probability_bands, portfolio_values_at_sigma, fig = pdf_results[i]
+            col.plotly_chart(fig)
+            returns_dict = calculate_returns_for_probability_bands(probability_bands, initial_investment, yearly_contribution, years_to_plot[i])
+            col.write(returns_dict)
+    
 
 def calculate_returns_for_probability_bands(probability_bands, initial_investment, annual_contribution, years):
     total_investment = initial_investment + annual_contribution * years
