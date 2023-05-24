@@ -10,8 +10,6 @@ import streamlit as st
 import yfinance as yf
 from fredapi import Fred
 
-from config import OPENAI_API_KEY, FRED_API_KEY
-
 @st.cache_data
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
@@ -71,6 +69,17 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
 
     return dividend_yield_ema.iloc[-1]
 
+def calculate_mean_returns(stock_data, mean_returns_model, risk_free_rate):
+    
+    if mean_returns_model == "Historical Returns (Geometric Mean)":
+        mu = expected_returns.mean_historical_return(stock_data)
+    elif mean_returns_model == "Historical Weighted w/Recent Data":
+        mu = expected_returns.ema_historical_return(stock_data)
+    elif mean_returns_model == "Capital Asset Pricing Model (CAPM)":
+        mu = expected_returns.capm_return(stock_data, risk_free_rate=risk_free_rate)
+        
+    return mu
+            
 def update_forecast_info(forecasted_stock_info, ticker, current_asset_price, dividend_yield, yearly_dividend, current_asset_shares, current_asset_value, year):
     forecasted_stock_info.loc[year, 'Year'] = year
     forecasted_stock_info.loc[year, 'Stock'] = ticker
@@ -298,6 +307,7 @@ def calculate_risk_extents(mu, S, risk_free_rate):
     # calculate the efficient frontier for max_sharpe
     ef_max_sharpe = EfficientFrontier(mu, S)
     # Calculate the maximum Sharpe ratio portfolio
+    #print(f'calculate risk_free_rate: {risk_free_rate}')
     max_sharpe_portfolio = ef_max_sharpe.max_sharpe(risk_free_rate=risk_free_rate)
         
     def calculate_risk(portfolio, S):
@@ -327,6 +337,7 @@ def calculate_portfolio_value(asset_data, weights):
 
     return portfolio_value
 
+
 def calculate_monthly_returns(data):
     #print(f"calculate_monthly_returns: data: {data.head()}****************")
 
@@ -352,3 +363,28 @@ def retrieve_risk_free_rate(start_date, end_date):
     fred = Fred(api_key='XXX')
     risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date) / 100 / 252
     return risk_free_rate_data
+
+def calculate_test_ratio(portfolio_summary):
+    years_of_historical_data = portfolio_summary["stock_data"].resample("Y").last().shape[0]
+    test_ratio = 1 - portfolio_summary["years"] / (years_of_historical_data + portfolio_summary["years"])
+    
+    years_of_historical_data = portfolio_summary["end_date"].year - portfolio_summary["start_date"].year
+    #print(f"years_of_historical_data: {years_of_historical_data}")
+    
+    return test_ratio
+
+def split_data(data, train_size=0.8):
+    data.index = data.index.tz_convert(None)
+    split_index = int(len(data) * train_size)
+    split_date = data.index[split_index].date()
+
+    # If the data at the split_index is not the first data of the day,
+    # adjust the split_index to the start of the next day.
+    if not (data.loc[str(split_date)].index[0] == data.index[split_index]):
+        split_date += pd.Timedelta(days=1)
+        split_index = data.index.get_indexer([split_date], method='nearest')[0]
+
+    train_data = data.iloc[:split_index].copy()
+    test_data = data.iloc[split_index:].copy()
+
+    return train_data, test_data

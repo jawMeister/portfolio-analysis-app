@@ -25,7 +25,7 @@ def plot_efficient_frontier_v0(efficient_portfolios, selected_portfolio, optimal
     ax.plot(efficient_portfolios[0]['risks'], efficient_portfolios[0]['returns'], 'bo', label='Min Volatility Portfolio', markersize=10)
     
     # Plot max sharpe portfolio
-    ax.plot(efficient_portfolios[-1]['risks'], efficient_portfolios[-1]['returns'], 'yo', label='Max Sharpe Portfolio', markersize=10)
+    ax.plot(efficient_portfolios[-1]['risks'], efficient_portfolios[-1]['returns'], 'yo', label='Max Sharpe Portfolio', size=10)
 
     ax.legend(loc='best')
     ax.set_xlabel('Risk')
@@ -188,12 +188,12 @@ def plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, 
     st.plotly_chart(fig)
     
 
-def plot_historical_performance(stock_data, dividend_data, start_date, end_date, selected_portfolio):
+def plot_historical_performance(stock_data, dividend_data, start_date, end_date, selected_portfolio_weights):
 
     # Retrieve S&P 500 data, risk-free rate data and calculate portfolio value
     sp500_data = utils.retrieve_historical_data('^GSPC', start_date, end_date)
     #risk_free_rate_data = utils.retrieve_risk_free_rate(start_date, end_date)
-    portfolio_value = utils.calculate_portfolio_value(stock_data, selected_portfolio['weights'])
+    portfolio_value = utils.calculate_portfolio_value(stock_data, selected_portfolio_weights)
     
     # Calculate absolute portfolio returns and cumulative returns
 
@@ -207,7 +207,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     relative_performance_sp500 = stock_returns.sub(sp500_returns, axis=0)
     #relative_performance_risk_free = stock_returns.sub(risk_free_rate_returns, axis=0)
         
-    weights = selected_portfolio['weights']
+    weights = selected_portfolio_weights
     
     # Ensure weights match the columns of ticker_returns
     weights = weights.reindex(stock_returns.columns)

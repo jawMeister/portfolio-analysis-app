@@ -1,6 +1,6 @@
 # Portfolio Analysis Application
 
-This is a portfolio analysis application that calculates optimal portfolios for a given set of tickers and time periods. It uses historical stock data to generate portfolios and provides various visualizations to analyze the results.
+This is a portfolio analysis application that calculates optimal portfolios for a given set of tickers and time periods. It uses historical stock data to generate portfolios and provides various visualizations to analyze the results. Currently iterating towards a target state application.
 
 ## Usage
 

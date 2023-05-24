@@ -1,6 +1,7 @@
 import os
 import yaml
 
+#TODO: refactor as can apparently just leverage streamlit's built-in secrets manager or toml config instead of this
 try:
     # Try to load keys from config.yaml
     with open('config.yaml', 'r') as file:

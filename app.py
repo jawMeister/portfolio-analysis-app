@@ -30,7 +30,11 @@ with st.sidebar:
     start_date = st.date_input("Start date (for historical stock data)", datetime(2014, 1, 1))
     end_date = st.date_input("End date (for historical stock data)", yesterday)
 
-    risk_free_rate = st.number_input("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f") / 100
+    if "risk_free_rate" not in st.session_state:
+        st.session_state.risk_free_rate = 0.04
+        
+    rfr = st.number_input("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f")
+    st.session_state.risk_free_rate = rfr / 100.0
 
     initial_investment = st.slider("Initial investment", min_value=0, max_value=1000000, step=5000, value=50000, format="$%d")
     yearly_contribution = st.slider("Yearly contribution", min_value=0, max_value=250000, step=5000, value=25000, format="$%d")
@@ -38,22 +42,23 @@ with st.sidebar:
     years = st.slider("Years to invest", min_value=1, max_value=50, step=1, value=20)
 
     #TODO: if different mean return model is selected or tickers updated, need to reset risk level and re-calculate
-    if tickers and start_date and end_date and risk_free_rate:
+    #TODO: save these values in session state and/or file/db to avoid resetting on page refresh
+    if tickers and start_date and end_date and st.session_state.risk_free_rate:
         stock_data, dividend_data = utils.get_stock_data(tickers, start_date, end_date)
         
+        if "mean_returns_model" not in st.session_state:
+            st.session_state.mean_returns_model = "Historical Returns (Geometric Mean)"
+            
         # radio button for risk model to leverage - put into session state?
-        mean_returns_model = st.radio("Mean returns model", ("Historical Returns (Geometric Mean)", "Historical Weighted w/Recent Data", "Capital Asset Pricing Model (CAPM)"))
+        st.radio("Mean returns model", ("Historical Returns (Geometric Mean)", 
+                                        "Historical Weighted w/Recent Data", 
+                                        "Capital Asset Pricing Model (CAPM)"), key="mean_returns_model")
         
-        if mean_returns_model == "Historical Returns (Geometric Mean)":
-            mu = expected_returns.mean_historical_return(stock_data)
-        elif mean_returns_model == "Historical Weighted w/Recent Data":
-            mu = expected_returns.ema_historical_return(stock_data)
-        elif mean_returns_model == "Capital Asset Pricing Model (CAPM)":
-            mu = expected_returns.capm_return(stock_data, risk_free_rate=risk_free_rate)
-
+        #print(f"mean_returns_model: {st.session_state.mean_returns_model}, risk_free_rate: {st.session_state.risk_free_rate}")
+        mu = utils.calculate_mean_returns(stock_data, st.session_state.mean_returns_model, st.session_state.risk_free_rate)
         S = risk_models.CovarianceShrinkage(stock_data).ledoit_wolf()
         
-        min_risk, max_risk = utils.calculate_risk_extents(mu, S, risk_free_rate)
+        min_risk, max_risk = utils.calculate_risk_extents(mu, S, st.session_state.risk_free_rate)
         if "risk_level" not in st.session_state:
             r0 = min_risk + ((max_risk - min_risk) /2)
             st.session_state.risk_level = float(r0)
@@ -83,13 +88,13 @@ with st.sidebar:
         st.markdown("Source: [Nobel Prize](https://www.nobelprize.org/prizes/economic-sciences/1990/summary/)")
         
 if tickers and start_date and end_date and initial_investment and years:
-    tab1, tab2, tab3, tab4 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", "Portfolio Optimization"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", "Rebalancing Analysis", "Portfolio Optimization"])
             # Calculate portfolio statistics
     portfolio_df, portfolio_summary = utils.calculate_portfolio_df(stock_data, dividend_data, 
-                                        mu, S, start_date, end_date,  st.session_state.risk_level, initial_investment, yearly_contribution, years, risk_free_rate)
+                                        mu, S, start_date, end_date,  st.session_state.risk_level, initial_investment, yearly_contribution, years, st.session_state.risk_free_rate)
     
     # Calculate efficient portfolios for plotting
-    efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, risk_free_rate)
+    efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, st.session_state.risk_free_rate)
     
     # Get the selected and optimal portfolios
     selected_portfolio = utils.calculate_portfolio_performance(portfolio_summary["risk_level"], 
@@ -113,8 +118,10 @@ if tickers and start_date and end_date and initial_investment and years:
         st.write("TODO: macro economic analysis")
         
     with tab4:
-
-        
+        st.container()
+        st.write("TODO: rebalancing approach analysis/simulations")
+ 
+    with tab5:
         st.container()
         col1, col2, col3 = st.columns(3)
             
@@ -135,4 +142,3 @@ if tickers and start_date and end_date and initial_investment and years:
             st.write("The most common approach for resampling in portfolio optimization is the Bootstrap method, where multiple subsamples of the historical returns data are created (with replacement), and each subsample is used to estimate the inputs for optimization.")
             st.write("Applying these methods in practice can be computationally intensive and might require some expertise in statistical and optimization methods.")
             st.write("It's essential to remember that no single method will always outperform the others in all scenarios. Each method has its own assumptions and trade-offs, and the best approach can depend on various factors, including the number and diversity of assets in the portfolio, the investor's risk tolerance, and the reliability of the input estimates.")
-
