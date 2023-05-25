@@ -1,7 +1,7 @@
 import streamlit as st
 import traceback
 import numpy as np
-import plotly.graph_objects as go
+
 from dateutil.relativedelta import relativedelta
 
 import logging
@@ -13,6 +13,7 @@ logger.setLevel(logging.INFO)
 
 import src.utils as utils
 import src.returns.calculate as calculate
+import src.returns.plot as plot
 
 # TODO: perhaps make these common? or create a class for portfolio and add the methods
 from src.portfolio.plot import plot_historical_performance, plot_efficient_frontier
@@ -52,25 +53,13 @@ def display_portfolio_returns_analysis(portfolio_summary):
         if run_simulation:
             if st.session_state.simulation_mode == "Forecast only" or st.session_state.simulation_mode == "Backtest and Forecast":
                 simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, distribution)
-                #analysis.plot_simulation_results(simulation_results)
-                calculate.plot_simulation_results_plotly(simulation_results, portfolio_summary["initial_investment"])
-            
-    with st.container():
-        if simulation_results:
-            #analysis.plot_density_plots(simulation_results)
-            years_in_results = len(simulation_results[0])
-            # create density plots for year 1, midpoint and the last simulated year
-            specific_years_to_plot = [1, years_in_results//2, years_in_results-1] 
-            sigma_levels_by_year, plots_by_year, returns_probability_by_year = \
-                        calculate.calculate_probability_density_for_returns(simulation_results, 
-                                                                           portfolio_summary["initial_investment"], 
-                                                                           portfolio_summary["yearly_contribution"], specific_years_to_plot)
-                        
-            col1, col2, col3 = st.columns([1,1,1], gap="large")
-            columns = [col1, col2, col3]                                 
-            for i, year in enumerate(specific_years_to_plot):
-                columns[i].plotly_chart(plots_by_year[year], use_container_width=True)
-                columns[i].write(returns_probability_by_year[year])
+
+                with st.container():
+                    calculate.plot_simulation_results_plotly(simulation_results, portfolio_summary["initial_investment"])
+                
+                with st.container():
+                    display_simulation_probability_density_plots(simulation_results, portfolio_summary)
+    
 
     #with st.expander("NOT reality, assumes constant growth rate"):
     #    display_asset_values(asset_values)
@@ -308,5 +297,36 @@ def display_portfolio_returns_analysis(portfolio_summary):
                                 st.write("Backtest simulation of max sharpe portfolio (PLACEHOLDER)")
                                 st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
 
-                        
+def display_simulation_future_returns_results(simulation_results):
+    col1, col2, col3 = st.columns(3, gap="large")
         
+    df_hist, df_scatter, df_box = calculate.calculate_simultion_future_returns(simulation_results)
+    
+    with col1:
+        with st.spinner('Calculating Histogram of Final Portfolio Values...'):
+            hist_plot = plot.plot_histogram(df_hist)
+            st.plotly_chart(hist_plot, use_container_width=True)
+    with col2:  
+        with st.spinner('Calculating Scatter Plot of Simulated Portfolio Values...'):
+            scat_plot = plot.plot_scatter(df_scatter)
+            st.plotly_chart(scat_plot, use_container_width=True)    
+    with col3:
+        with st.spinner('Calculating Scatter Box Plot of Simulated Portfolio Values...'):
+            box_plot = plot.plot_box(df_box)
+            st.plotly_chart(box_plot, use_container_width=True) 
+
+def display_simulation_probability_density_plots(simulation_results, portfolio_summary):
+    years_in_results = len(simulation_results[0])
+    # create density plots for year 1, midpoint and the last simulated year
+    specific_years_to_plot = [1, years_in_results//2, years_in_results-1] 
+    sigma_levels_by_year, plots_by_year, returns_probability_by_year = \
+                calculate.calculate_probability_density_for_returns(simulation_results, 
+                                                                    portfolio_summary["initial_investment"], 
+                                                                    portfolio_summary["yearly_contribution"], 
+                                                                    specific_years_to_plot)
+                
+    col1, col2, col3 = st.columns([1,1,1], gap="large")
+    columns = [col1, col2, col3]                                 
+    for i, year in enumerate(specific_years_to_plot):
+        columns[i].plotly_chart(plots_by_year[year], use_container_width=True)
+        columns[i].write(returns_probability_by_year[year])

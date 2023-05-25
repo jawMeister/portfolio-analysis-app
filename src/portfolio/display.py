@@ -127,8 +127,6 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                 
             with col2:
                 # Display portfolio details
-                #print(f"portfolio_summary keys: {portfolio_summary.keys()}")
-                #print(f"portfolio_summary weights: {portfolio_summary['weights']}")
                 plot.plot_historical_performance(portfolio_summary["stock_data"], 
                                                   portfolio_summary["dividend_data"], 
                                                   portfolio_summary["start_date"], 

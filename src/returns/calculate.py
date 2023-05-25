@@ -125,9 +125,7 @@ def calculate_box_data(results):
     
     return df_box
 
-def plot_simulation_results_plotly(results, initial_investment):
-    col1, col2, col3 = st.columns(3, gap="large")
-        
+def calculate_simulation_future_returns(results):        
     start_time = time.time()
     with st.spinner(f'Calculating plots... at time of ' + datetime.now().strftime('%H:%M:%S.%f')[:-3]):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -151,45 +149,9 @@ def plot_simulation_results_plotly(results, initial_investment):
                     df_box = future.result()
                     time_to_run = time.time() - start_time
                     logger.info(f"The box plot took {time_to_run} seconds to run")
-
-    with col1:
-        with st.spinner('Calculating Histogram of Final Portfolio Values...'):
-            fig1 = go.Figure()
-            fig1.add_trace(go.Histogram(x=df_hist["Final Portfolio Value"], nbinsx=100))
-            fig1.update_layout(title_text='Histogram of Final Portfolio Values',
-                    xaxis_title='Portfolio Value',
-                    yaxis_title='Frequency',
-                    xaxis_tickprefix="$",
-                    bargap=0.1)
-            st.plotly_chart(fig1, use_container_width=True)
-
-    with col2:  
-        with st.spinner('Calculating Scatter Plot of Simulated Portfolio Values...'):
-            fig2 = go.Figure()
-
-            fig2.add_trace(go.Scattergl(x=df_scatter["Year"], y=df_scatter["Portfolio Value"], mode='markers',
-                                        marker=dict(color=df_scatter["Z-Score"], colorscale='inferno', size=5, opacity=0.5, showscale=True, colorbar=dict(title='Absolute Z-score'))))
-            fig2.update_layout(title_text='Portfolio Value Over Time (All Simulations)',
-                                    xaxis_title='Year',
-                                    yaxis_title='Portfolio Value',
-                                    yaxis_type="log",
-                                    yaxis_tickprefix="$",
-                                    showlegend=False)
-
-            st.plotly_chart(fig2, use_container_width=True)
-            
-    with col3:
-        with st.spinner('Calculating Scatter Box Plot of Simulated Portfolio Values...'):
-            fig3 = go.Figure()
-            fig3.add_trace(go.Box(y=df_box["Portfolio Value"], x=df_box["Year"]))
-            fig3.update_layout(title_text='Box plot of Portfolio Values Per Year',
-                    yaxis_title='Portfolio Value',
-                    yaxis_type="log",
-                    yaxis_tickprefix="$",
-                    showlegend=False,
-                    xaxis_title='Year')
-            st.plotly_chart(fig3, use_container_width=True)
-                        
+                    
+    return df_hist, df_scatter, df_box
+    
 def format_currency(value):
     # Store the sign of the value to restore it later
     sign = -1 if value < 0 else 1
