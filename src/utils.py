@@ -10,6 +10,13 @@ import streamlit as st
 import yfinance as yf
 from fredapi import Fred
 
+import logging
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
+
+# Set up logger for a specific module to a different level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 @st.cache_data
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
@@ -22,7 +29,7 @@ def get_dividend_data(tickers, start_date, end_date):
     return pd.DataFrame(dividend_data)
 
 @st.cache_data
-def get_stock_data(tickers, start_date, end_date):
+def get_stock_and_dividend_data(tickers, start_date, end_date):
     if isinstance(start_date, (datetime, date)):
         start_date = start_date.strftime('%Y-%m-%d')
     if isinstance(end_date, (datetime, date)):
@@ -35,6 +42,18 @@ def get_stock_data(tickers, start_date, end_date):
 
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data, dividend_data
+
+@st.cache_data
+def get_stock_data(tickers, start_date, end_date):
+    if isinstance(start_date, (datetime, date)):
+        start_date = start_date.strftime('%Y-%m-%d')
+    if isinstance(end_date, (datetime, date)):
+        end_date = end_date.strftime('%Y-%m-%d')
+    if not isinstance(start_date, str) or not isinstance(end_date, str):
+        raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
+    
+    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    return data
 
 @st.cache_data
 def calculate_dividend_yield(stock_data, dividend_data):
@@ -186,27 +205,16 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     ef = EfficientFrontier(mu, S)
     ef.efficient_risk(risk_level)
         
-    returns = stock_data.pct_change().dropna()
+    simple_returns = stock_data.pct_change().dropna()
         
     # Obtain weights, return, volatility, and Sharpe ratio
     weights = ef.clean_weights()
-    weights = pd.Series(weights).reindex(returns.columns)
+    weights = pd.Series(weights).reindex(simple_returns.columns)
     portfolio_expected_return, volatility, sharpe_ratio = ef.portfolio_performance()
    
-    portfolio_return = np.sum([np.mean(returns[ticker]) * weights[ticker] for ticker in weights.index])
-
-    # Calculate portfolio beta using weights
-    #market_returns = yf.download('SPY', start_date, end_date)['Adj Close'].pct_change().dropna()
-    #market_returns = market_returns.reindex(returns.index).fillna(0)  # align the index and fill missing values
-    #market_covar = np.sum([np.cov(returns[ticker], market_returns)[0][1] * weights[ticker] for ticker in weights.index])
-    #market_var = np.var(market_returns)
-    #portfolio_beta = market_covar / market_var
-
-    # Calculate Treynor Ratio
-    #treynor_ratio = (portfolio_return - risk_free_rate) / portfolio_beta
-    treynor_ratio = 0
+    treynor_ratio = calculate_treynor_ratio(simple_returns, weights, start_date, end_date, risk_free_rate)
     
-    weighted_returns = returns.dot(weights)
+    weighted_returns = simple_returns.dot(weights)
     sortino_ratio_val = sortino_ratio(weighted_returns)
     alpha = 0.05
     cvar = -np.nanpercentile(weighted_returns[weighted_returns < 0], alpha * 100)
@@ -215,7 +223,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
                          "dividend_data": dividend_data, 
                          "mu": mu, 
                          "S": S, 
-                         "individual_returns": returns,
+                         "simple_returns_by_ticker": simple_returns,
                          "start_date": start_date, 
                          "end_date": end_date, 
                          "risk_level": risk_level, 
@@ -224,10 +232,10 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
                          "years": years, 
                          "risk_free_rate": risk_free_rate, 
                          "weights": weights, 
-                         "portfolio_expected_return": portfolio_expected_return, 
+#                         "portfolio_expected_return": portfolio_expected_return, 
                          "volatility": volatility, 
                          "sharpe_ratio": sharpe_ratio, 
-                         "portfolio_return": portfolio_return, 
+                         "portfolio_return": portfolio_expected_return, 
                          "sortino_ratio": sortino_ratio_val, 
                          "cvar": cvar,
                          "treynor_ratio": treynor_ratio,
@@ -255,6 +263,39 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     """
     return portfolio_df, portfolio_summary
 
+def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free_rate):
+    """
+    Calculate the Treynor Ratio for a given portfolio.
+
+    Parameters:
+    stock_data (pd.DataFrame): DataFrame with stock data for each ticker
+    weights (pd.Series): Investment weights for each ticker
+    start_date (str): Start date for data in 'YYYY-MM-DD' format
+    end_date (str): End date for data in 'YYYY-MM-DD' format
+    risk_free_rate (float): Risk-free rate
+
+    Returns:
+    float: Treynor Ratio of the portfolio
+    """
+
+    # Calculate portfolio return
+    returns = stock_data.pct_change().dropna()
+    weighted_returns = returns.mul(weights, axis=1)
+    portfolio_return = weighted_returns.sum(axis=1).mean()
+
+    # Calculate portfolio beta
+    market_returns = get_stock_data('^GSPC', start_date, end_date).pct_change().dropna()
+    portfolio_returns = weighted_returns.sum(axis=1)
+    portfolio_beta = portfolio_returns.cov(market_returns) / market_returns.var()
+
+    # Calculate Treynor Ratio
+    treynor_ratio = (portfolio_return - risk_free_rate) / portfolio_beta
+
+    return treynor_ratio
+
+def calculate_covariance_matrix(stock_data):
+    return risk_models.CovarianceShrinkage(stock_data).ledoit_wolf()
+
 @st.cache_data
 def calculate_efficient_portfolios(mu, S, risk_free_rate):
     min_risk, max_sharpe_ratio = calculate_risk_extents(mu, S, risk_free_rate)
@@ -268,21 +309,23 @@ def calculate_efficient_portfolios(mu, S, risk_free_rate):
         weights = ef.clean_weights()
         ret, vol, sharpe = ef.portfolio_performance()
         efficient_portfolios.append({
-            'returns': ret,
-            'risks': vol,
+            'portfolio_return': ret,
+            'volatility': vol,
             'sharpe_ratio': sharpe,
             'weights': weights
         })
     return efficient_portfolios
 
+""" OLD ... just stores result of efficient frontier portfolio performance
 def calculate_portfolio_performance(risk, weights, ret, vol, sharpe_ratio_val):
     selected_portfolio = {
-        'returns': ret,
+        'portfolio_return': ret,
         'risks': vol,
         'sharpe_ratio': sharpe_ratio_val,
         'weights': weights
     }
     return selected_portfolio
+"""
 
 def calculate_total_return(initial_investment, annual_return, yearly_contribution, years):
     total_return = initial_investment
@@ -307,7 +350,6 @@ def calculate_risk_extents(mu, S, risk_free_rate):
     # calculate the efficient frontier for max_sharpe
     ef_max_sharpe = EfficientFrontier(mu, S)
     # Calculate the maximum Sharpe ratio portfolio
-    #print(f'calculate risk_free_rate: {risk_free_rate}')
     max_sharpe_portfolio = ef_max_sharpe.max_sharpe(risk_free_rate=risk_free_rate)
         
     def calculate_risk(portfolio, S):
@@ -339,8 +381,6 @@ def calculate_portfolio_value(asset_data, weights):
 
 
 def calculate_monthly_returns(data):
-    #print(f"calculate_monthly_returns: data: {data.head()}****************")
-
     # Convert Series to DataFrame
     data = pd.DataFrame(data)
 
@@ -348,8 +388,8 @@ def calculate_monthly_returns(data):
     daily_returns = data.pct_change()
 
     # Resample to the monthly level
-    #monthly_returns = daily_returns.resample('M').apply(lambda x: (x + 1).prod() - 1)
     monthly_returns = daily_returns.resample('M').mean()
+    logger.debug(f"Monthly returns:\n{monthly_returns.head()}")
 
     return monthly_returns
 
@@ -364,27 +404,3 @@ def retrieve_risk_free_rate(start_date, end_date):
     risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date) / 100 / 252
     return risk_free_rate_data
 
-def calculate_test_ratio(portfolio_summary):
-    years_of_historical_data = portfolio_summary["stock_data"].resample("Y").last().shape[0]
-    test_ratio = 1 - portfolio_summary["years"] / (years_of_historical_data + portfolio_summary["years"])
-    
-    years_of_historical_data = portfolio_summary["end_date"].year - portfolio_summary["start_date"].year
-    #print(f"years_of_historical_data: {years_of_historical_data}")
-    
-    return test_ratio
-
-def split_data(data, train_size=0.8):
-    data.index = data.index.tz_convert(None)
-    split_index = int(len(data) * train_size)
-    split_date = data.index[split_index].date()
-
-    # If the data at the split_index is not the first data of the day,
-    # adjust the split_index to the start of the next day.
-    if not (data.loc[str(split_date)].index[0] == data.index[split_index]):
-        split_date += pd.Timedelta(days=1)
-        split_index = data.index.get_indexer([split_date], method='nearest')[0]
-
-    train_data = data.iloc[:split_index].copy()
-    test_data = data.iloc[split_index:].copy()
-
-    return train_data, test_data

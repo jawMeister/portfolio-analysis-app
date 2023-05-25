@@ -4,60 +4,41 @@ import streamlit as st
 import pandas as pd
 import random
 
-import utils
+import src.portfolio.calculate as calculate
+import src.utils as utils
 
-def plot_efficient_frontier_v0(efficient_portfolios, selected_portfolio, optimal_portfolio):
-    fig, ax = plt.subplots()
+import logging
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
-    # Plot efficient frontier
-    returns = [portfolio['returns'] for portfolio in efficient_portfolios]
-    risks = [portfolio['risks'] for portfolio in efficient_portfolios]
-    ax.plot(risks, returns, 'y', label='Efficient Frontier')
-
-    # Plot selected portfolio
-    ax.plot(selected_portfolio['risks'], selected_portfolio['returns'], 'ro', label='Selected Portfolio', markersize=10)
-
-    # Plot optimal portfolio
-    opt_label = 'Optimal Portfolio (risk: ' + str(round(optimal_portfolio['risks'], 4)) + ', return: ' + str(round(optimal_portfolio['returns'], 4)) + ')'
-    ax.plot(optimal_portfolio['risks'], optimal_portfolio['returns'], 'go', label=opt_label, markersize=30)
-    
-    # Plot min volatility portfolio
-    ax.plot(efficient_portfolios[0]['risks'], efficient_portfolios[0]['returns'], 'bo', label='Min Volatility Portfolio', markersize=10)
-    
-    # Plot max sharpe portfolio
-    ax.plot(efficient_portfolios[-1]['risks'], efficient_portfolios[-1]['returns'], 'yo', label='Max Sharpe Portfolio', size=10)
-
-    ax.legend(loc='best')
-    ax.set_xlabel('Risk')
-    ax.set_ylabel('Return')
-    ax.set_title('Efficient Frontier')
-
-    st.pyplot(fig)
+# Set up logger for a specific module to a different level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
     
 def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio):
     # Create a scatter plot for the efficient frontier
     fig = go.Figure()
-    returns = [portfolio['returns'] for portfolio in efficient_portfolios]
-    risks = [portfolio['risks'] for portfolio in efficient_portfolios]
+    returns = [portfolio['portfolio_return'] for portfolio in efficient_portfolios]
+    risks = [portfolio['volatility'] for portfolio in efficient_portfolios]
     fig.add_trace(go.Scatter(x=risks, y=returns, mode='lines', name='Efficient Frontier'))
 
     # Add a point for the selected portfolio
-    fig.add_trace(go.Scatter(x=[selected_portfolio['risks']], y=[selected_portfolio['returns']], mode='markers', name='Selected Portfolio', marker=dict(size=10, color='red')))
+    fig.add_trace(go.Scatter(x=[selected_portfolio['volatility']], y=[selected_portfolio['portfolio_return']], mode='markers', name='Selected Portfolio', marker=dict(size=10, color='red')))
 
     # Add a point for the optimal portfolio
-    opt_label = 'Optimal Portfolio (risk: ' + str(round(optimal_portfolio['risks'], 4)) + ', return: ' + str(round(optimal_portfolio['returns'], 4)) + ')'
-    fig.add_trace(go.Scatter(x=[optimal_portfolio['risks']], y=[optimal_portfolio['returns']], mode='markers', name=opt_label, marker=dict(size=10, color='green')))
+    opt_label = 'Optimal Portfolio (risk: ' + str(round(optimal_portfolio['volatility'], 4)) + ', return: ' + str(round(optimal_portfolio['portfolio_return'], 4)) + ')'
+    fig.add_trace(go.Scatter(x=[optimal_portfolio['volatility']], y=[optimal_portfolio['portfolio_return']], mode='markers', name=opt_label, marker=dict(size=10, color='green')))
 
     # Add a point for the min volatility portfolio
-    fig.add_trace(go.Scatter(x=[efficient_portfolios[0]['risks']], y=[efficient_portfolios[0]['returns']], mode='markers', name='Min Volatility Portfolio', marker=dict(size=10, color='blue')))
+    fig.add_trace(go.Scatter(x=[efficient_portfolios[0]['volatility']], y=[efficient_portfolios[0]['portfolio_return']], mode='markers', name='Min Volatility Portfolio', marker=dict(size=10, color='blue')))
 
     # Add a point for the max sharpe portfolio
-    fig.add_trace(go.Scatter(x=[efficient_portfolios[-1]['risks']], y=[efficient_portfolios[-1]['returns']], mode='markers', name='Max Sharpe Portfolio', marker=dict(size=10, color='yellow')))
+    fig.add_trace(go.Scatter(x=[efficient_portfolios[-1]['volatility']], y=[efficient_portfolios[-1]['portfolio_return']], mode='markers', name='Max Sharpe Portfolio', marker=dict(size=10, color='yellow')))
 
     fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', autosize=True)
 
     st.plotly_chart(fig)
     
+# TODO: store color by asset in session state to use across the app
 def get_random_color():
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -69,7 +50,7 @@ def plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, 
     portfolios = {}
     
     # if the selected portfolio risk is greater than optimal portfolio risk, then add the selected portfolio to the list of portfolios
-    if selected_portfolio['risks'] > optimal_portfolio['risks']:
+    if selected_portfolio['volatility'] > optimal_portfolio['volatility']:
         # Define a list of portfolios
         portfolios = {
             'Min Volatility Portfolio': efficient_portfolios[0],
@@ -193,7 +174,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     # Retrieve S&P 500 data, risk-free rate data and calculate portfolio value
     sp500_data = utils.retrieve_historical_data('^GSPC', start_date, end_date)
     #risk_free_rate_data = utils.retrieve_risk_free_rate(start_date, end_date)
-    portfolio_value = utils.calculate_portfolio_value(stock_data, selected_portfolio_weights)
+    portfolio_value = calculate.calculate_weighted_portfolio_index_value(stock_data, selected_portfolio_weights)
     
     # Calculate absolute portfolio returns and cumulative returns
 
@@ -346,9 +327,9 @@ def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_da
 
     # Retrieve S&P 500 data, risk-free rate data and calculate portfolio value
     #sp500_data = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
-    sp500_data = utils.retrieve_historical_data('^GSPC', start_date, end_date)
-    risk_free_rate_data = utils.retrieve_risk_free_rate(start_date, end_date)
-    portfolio_value = utils.calculate_portfolio_value(stock_data, selected_portfolio['weights'])
+    sp500_data = calculate.retrieve_historical_data('^GSPC', start_date, end_date)
+    risk_free_rate_data = calculate.retrieve_risk_free_rate(start_date, end_date)
+    portfolio_value = calculate.calculate_weighted_portfolio_index_value(stock_data, selected_portfolio['weights'])
 
     
     # Calculate monthly returns for tickers

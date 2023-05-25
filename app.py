@@ -5,16 +5,16 @@ from pypfopt import expected_returns, risk_models
 import warnings
 warnings.filterwarnings("ignore", message="Module \"zipline.assets\" not found")
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
-import yaml
+import logging
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
-import utils
-import display
-import plots
-import analysis
+# Set up logger for a specific module to a different level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
+from src import utils as utils
+from src.portfolio import display as portfolio
+from src.returns import display as returns
 
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
@@ -44,7 +44,7 @@ with st.sidebar:
     #TODO: if different mean return model is selected or tickers updated, need to reset risk level and re-calculate
     #TODO: save these values in session state and/or file/db to avoid resetting on page refresh
     if tickers and start_date and end_date and st.session_state.risk_free_rate:
-        stock_data, dividend_data = utils.get_stock_data(tickers, start_date, end_date)
+        stock_data, dividend_data = utils.get_stock_and_dividend_data(tickers, start_date, end_date)
         
         if "mean_returns_model" not in st.session_state:
             st.session_state.mean_returns_model = "Historical Returns (Geometric Mean)"
@@ -54,9 +54,9 @@ with st.sidebar:
                                         "Historical Weighted w/Recent Data", 
                                         "Capital Asset Pricing Model (CAPM)"), key="mean_returns_model")
         
-        #print(f"mean_returns_model: {st.session_state.mean_returns_model}, risk_free_rate: {st.session_state.risk_free_rate}")
+        #logging.debug(f"mean_returns_model: {st.session_state.mean_returns_model}, risk_free_rate: {st.session_state.risk_free_rate}")
         mu = utils.calculate_mean_returns(stock_data, st.session_state.mean_returns_model, st.session_state.risk_free_rate)
-        S = risk_models.CovarianceShrinkage(stock_data).ledoit_wolf()
+        S = utils.calculate_covariance_matrix(stock_data)
         
         min_risk, max_risk = utils.calculate_risk_extents(mu, S, st.session_state.risk_free_rate)
         if "risk_level" not in st.session_state:
@@ -88,31 +88,20 @@ with st.sidebar:
         st.markdown("Source: [Nobel Prize](https://www.nobelprize.org/prizes/economic-sciences/1990/summary/)")
         
 if tickers and start_date and end_date and initial_investment and years:
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", "Rebalancing Analysis", "Portfolio Optimization"])
-            # Calculate portfolio statistics
-    portfolio_df, portfolio_summary = utils.calculate_portfolio_df(stock_data, dividend_data, 
-                                        mu, S, start_date, end_date,  st.session_state.risk_level, initial_investment, yearly_contribution, years, st.session_state.risk_free_rate)
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", 
+                                            "Rebalancing Analysis", "Portfolio Optimization"])
     
-    # Calculate efficient portfolios for plotting
-    efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, st.session_state.risk_free_rate)
-    
-    # Get the selected and optimal portfolios
-    selected_portfolio = utils.calculate_portfolio_performance(portfolio_summary["risk_level"], 
-                                                                portfolio_summary["weights"], 
-                                                                portfolio_summary["portfolio_expected_return"], 
-                                                                portfolio_summary["volatility"], 
-                                                                portfolio_summary["sharpe_ratio"])
-    
-    optimal_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
-    
-
-    asset_values, detailed_asset_holdings = utils.calculate_future_asset_holdings(portfolio_summary)
-        
+    # Calculate portfolio statistics
+    portfolio_df, portfolio_summary = \
+        utils.calculate_portfolio_df(stock_data, dividend_data, 
+                                    mu, S, start_date, end_date, st.session_state.risk_level, 
+                                    initial_investment, yearly_contribution, years, st.session_state.risk_free_rate)  
+     
     with tab1:
-        display.display_portfolio(portfolio_summary, portfolio_df, selected_portfolio, optimal_portfolio, efficient_portfolios)
+        portfolio.display_selected_portfolio(portfolio_summary, portfolio_df)
        
     with tab2:
-        display.display_portfolio_returns_analysis(portfolio_summary, asset_values)
+        returns.display_portfolio_returns_analysis(portfolio_summary)
         
     with tab3:
         st.write("TODO: macro economic analysis")

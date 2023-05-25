@@ -18,7 +18,7 @@ import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
-from plots import calculate_histogram_data, calculate_scatter_data, calculate_box_data
+from portfolio.plot import calculate_histogram_data, calculate_scatter_data, calculate_box_data
 
 # attempting to set the matplotlib style to the streamlit default
 plt.rcParams['text.color'] = '#E0E0E0'  # Setting the text color to a light gray
