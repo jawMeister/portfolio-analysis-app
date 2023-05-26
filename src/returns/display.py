@@ -22,14 +22,13 @@ from config import OPENAI_API_KEY, FRED_API_KEY
 
 
 def display_portfolio_returns_analysis(portfolio_summary):
-    st.subheader("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
     simulation_results = None
     input_container = st.container()
     forecast_output_container = st.container()
     backtest_output_container = st.container()
     
     with input_container:
-        col1, col2, col3, col4 = st.columns([2,2,2,2])
+        col1, col2, col3 = st.columns([2,2,2])
     
         with col1:
             subcol1, subcol2 = st.columns([1,1])
@@ -49,15 +48,20 @@ def display_portfolio_returns_analysis(portfolio_summary):
                 st.radio("Simulation Mode", ("Backtest and Forecast", "Forecast only", "Backtest only"), key="simulation_mode")
                 
             #TODO: add a button to execute the simulations
-            st.slider("Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
+            st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
             run_simulation = st.button("Run Simulations", use_container_width=True)
             
         with col2:
             if session.check_for_openai_api_key():
+                if "openai_returns_response" not in st.session_state:
+                    st.session_state.openai_returns_response = None
+                    
                 if st.button("Ask OpenAI about the validity of this simulation"):
                     with st.spinner("Waiting for OpenAI API to respond..."):
                         response = interpret.openai_interpret_montecarlo_simulation(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
-                        st.write(response)
+                        st.session_state.openai_returns_response = response
+                if st.session_state.openai_returns_response:
+                    st.write(st.session_state.openai_returns_response)
             
     with forecast_output_container:
         st.markdown("""---""")

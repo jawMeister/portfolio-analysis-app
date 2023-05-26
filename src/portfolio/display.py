@@ -147,12 +147,17 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                         session.set_openai_api_key(temp_key)
 
                 if session.check_for_openai_api_key():
-                    #print(f"OpenAI API Key: {st.session_state.openai_api_key} of type {type(st.session_state.openai_api_key)}")
+                    if "openai_portfolio_response" not in st.session_state:
+                        st.session_state.openai_portfolio_response = None
+                        
                     if st.button("Ask OpenAI to Interpret Results"):
                         # Display a message indicating the application is waiting for the API to respond
                         with st.spinner("Waiting for OpenAI API to respond..."):
                             response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
-                            st.write(response)
+                            st.session_state.openai_portfolio_response = response
+                            
+                    if st.session_state.openai_portfolio_response:
+                        st.write(st.session_state.openai_portfolio_response)
 
                 st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
                 st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")

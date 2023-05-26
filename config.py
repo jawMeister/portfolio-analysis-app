@@ -1,12 +1,13 @@
 import os
 import yaml
+import streamlit as st
 
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 def mask_key(key):
     return key[:4] + '*' * len(key[4:])
@@ -19,6 +20,7 @@ try:
         logger.debug(f"config: {masked_config}")
         # Ensure config is a dictionary
         assert isinstance(config, dict)
+            
 except (FileNotFoundError, AssertionError):
     # If the file is not found or config is not a dictionary, use empty dictionary
     config = {}

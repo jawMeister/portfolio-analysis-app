@@ -3,7 +3,7 @@ import openai
 
 import src.session as session
 
-def openai_interpret_montecarlo_simulation(portfolio_summary, number_of_simulations, volatility_distribution):
+def openai_ask_about_macro_economic_factors(portfolio_summary):
     
     if session.check_for_openai_api_key():
         openai.api_key = session.get_openai_api_key()
@@ -15,14 +15,12 @@ def openai_interpret_montecarlo_simulation(portfolio_summary, number_of_simulati
                 
         portfolio_stats = f"Given a portfolio with a Sharpe Ratio of {portfolio_summary['sharpe_ratio']:.2f}, Sortino Ratio of {portfolio_summary['sortino_ratio']:.2f}, " + \
                             f"CVaR of {portfolio_summary['cvar']:.2f} composed of {tickers} weighted as {portfolio_summary['weights']}," + \
-                                "I executed a Monte Carlo Simulation with {number_of_simulations} simulations over {portfolio_summary['years']} years " + \
-                                    "to simulate future returns by leveraging a {volatility_distribution} for volatily per asset to establish random returns. "
+                                "I executed a Monte Carlo Simulation over {portfolio_summary['years']} years " + \
+                                    "to simulate future returns by leveraging historical volatily per asset to establish random returns. "
         
         question = portfolio_stats + \
-                    "As a financial advisor, what is your assessment of this portfolio, " + \
-                    "how valid are the assumptions made in the Monte Carlo Simulation and " + \
-                    "how should I interpret the simulation results which plot probability densities by year? " + \
-                    "What are your recommendations for optimizing potential returns and what other analyses do you recommend for the portfolio? "
+                    "As a financial advisor, I am now interested in understanding the impact of macro-economic factors on the portfolio. " + \
+                    "What are the top 3 macro-economic factors that may impact the particular assets in this portfolio and how should I explore them?"
                     
         print(f"question: {question}")
         chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": question}])

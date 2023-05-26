@@ -264,6 +264,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     """
     return portfolio_df, portfolio_summary
 
+# TODO: fix the math
 def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free_rate):
     """
     Calculate the Treynor Ratio for a given portfolio.

@@ -96,8 +96,8 @@ if tickers and start_date and end_date and initial_investment and years:
     portfolio_df, portfolio_summary = \
         utils.calculate_portfolio_df(stock_data, dividend_data, 
                                     mu, S, start_date, end_date, st.session_state.risk_level, 
-                                    initial_investment, yearly_contribution, years, st.session_state.risk_free_rate)  
-     
+                                    initial_investment, yearly_contribution, years, st.session_state.risk_free_rate)
+        
     with tab1:
         portfolio.display_selected_portfolio(portfolio_summary, portfolio_df)
        
@@ -105,7 +105,7 @@ if tickers and start_date and end_date and initial_investment and years:
         returns.display_portfolio_returns_analysis(portfolio_summary)
         
     with tab3:
-        macro.display_macro_analysis_simulations(portfolio_summary)
+        macro.display_macro_analysis(portfolio_summary)
         
     with tab4:
         st.container()

@@ -3,14 +3,12 @@ import openai
 
 import src.session as session
 
-# TODO: move this to streamlit config
-from config import OPENAI_API_KEY, FRED_API_KEY
-
 def openai_interpret_portfolio_summary(portfolio_summary):
     
     #print(f"openai api key: {openai_api_key}")
     
     if session.check_for_openai_api_key():
+        openai.api_key = session.get_openai_api_key()
         
         tickers = []
         for ticker in portfolio_summary["stock_data"].columns:
@@ -22,7 +20,8 @@ def openai_interpret_portfolio_summary(portfolio_summary):
         cvar_q = f"What is a CVaR and what does a CVaR of {portfolio_summary['cvar']:.2f} for this portfolio imply? Is it good or bad and what are your recommendations for adjustments?"
         treynor_q = "" #f"What is the Treynor Ratio and what does a Treynor Ratio of {portfolio_summary['treynor_ratio']:.2f} for this portfolio imply? Is it good or bad and what are your recommendations for adjustments?"
         data_to_share = f"The portfolio is composed of {tickers} weighted as {portfolio_summary['weights']}. \
-                        The portfolio has a total return of {portfolio_summary['portfolio_return']} and a volatility of {portfolio_summary['volatility']}."
+                        The portfolio has a total return of {portfolio_summary['portfolio_return']} and a volatility of {portfolio_summary['volatility']}. \
+                        The investment horizon is {portfolio_summary['years']} years and the investor's risk appetite is {st.session_state.risk_level} in an efficient frontier context."
         all_q = f"Taken together, what is your analysis of a portfolio with these statistics and what are your suggestions for optimizing potential returns?"
 
         question = sharpe_q + sortino_q + cvar_q + treynor_q + data_to_share + all_q
