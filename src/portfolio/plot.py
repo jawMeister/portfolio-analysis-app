@@ -36,7 +36,7 @@ def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_po
 
     fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', autosize=True)
 
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
     
 # TODO: store color by asset in session state to use across the app
 def get_random_color():
@@ -150,7 +150,7 @@ def plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, 
     )
 
     # Display the figure
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
     # Pivot the DataFrame so that each portfolio is a column
     asset_weights_df = asset_weights_df.pivot(index='Asset', columns='Portfolio', values='Weight')
@@ -166,7 +166,7 @@ def plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, 
         ))
 
     fig.update_layout(barmode='stack', title_text='Portfolio Weights Comparison')
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
     
 
 def plot_historical_performance(stock_data, dividend_data, start_date, end_date, selected_portfolio_weights):
@@ -253,7 +253,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
         yaxis_tickformat='.1%'
     )
     
-    st.plotly_chart(fig5)
+    st.plotly_chart(fig5, use_container_width=True)
     
     #TODO: fix this chart as the dividend yield is not correct
     """ 
@@ -304,7 +304,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
         yaxis_tickformat='.1%'
     )
     
-    st.plotly_chart(fig3)
+    st.plotly_chart(fig3, use_container_width=True)
 
     # Chart 1: Monthly Performance Relative to S&P 500 (Weighted Portfolio)
     fig1 = go.Figure()
@@ -320,7 +320,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
         yaxis_tickformat='.1%'
     )
 
-    st.plotly_chart(fig1)
+    st.plotly_chart(fig1, use_container_width=True)
 
 
 def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_date, selected_portfolio):
@@ -373,7 +373,7 @@ def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_da
         yaxis_tickformat='.1%'
     )
     
-    st.plotly_chart(fig5)
+    st.plotly_chart(fig5, use_container_width=True)
     
     # Chart 3: Cumulative Performance Relative to S&P 500 (Weighted Portfolio)
     cumulative_returns_sp500 = (1 + portfolio_returns_sp500).cumprod() - 1
@@ -395,7 +395,7 @@ def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_da
         yaxis_tickformat='.1%'
     )
     
-    st.plotly_chart(fig3)
+    st.plotly_chart(fig3, use_container_width=True)
 
     # Chart 1: Monthly Performance Relative to S&P 500 (Weighted Portfolio)
     fig1 = go.Figure()
@@ -411,7 +411,7 @@ def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_da
         yaxis_tickformat='.1%'
     )
 
-    st.plotly_chart(fig1)
+    st.plotly_chart(fig1, use_container_width=True)
     
     """
     # Chart 2: Monthly Performance Relative to Risk-Free Rate (Weighted Portfolio)
@@ -522,7 +522,7 @@ def plot_historical_dividend_performance(portfolio_summary):
                       autosize=False,
                       width=1000,
                       height=500)
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
     
 def plot_asset_values(asset_values):
 
@@ -607,8 +607,8 @@ def plot_asset_values(asset_values):
     with st.container():
         col1, col2, col3 = st.columns([1,1,1])
         with col1:
-            st.plotly_chart(fig2)
+            st.plotly_chart(fig2, use_container_width=True)
         with col2:
-            st.plotly_chart(fig1)
+            st.plotly_chart(fig1, use_container_width=True)
         with col3:
-            st.plotly_chart(fig3)
+            st.plotly_chart(fig3, use_container_width=True)

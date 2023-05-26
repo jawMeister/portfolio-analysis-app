@@ -109,7 +109,7 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                         total_return: {total_return}, years: {portfolio_summary['years']}")
                 
         with st.container():
-            col1, col2, col3 = st.columns([1, 1, 1])
+            col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     
             with col1:
                 display_selected_portfolio_table(portfolio_df, portfolio_summary)
