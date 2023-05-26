@@ -15,6 +15,7 @@ logger.setLevel(logging.DEBUG)
 from src import utils as utils
 from src.portfolio import display as portfolio
 from src.returns import display as returns
+from src.macro import display as macro
 
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
@@ -104,7 +105,7 @@ if tickers and start_date and end_date and initial_investment and years:
         returns.display_portfolio_returns_analysis(portfolio_summary)
         
     with tab3:
-        st.write("TODO: macro economic analysis")
+        macro.display_macro_analysis_simulations(portfolio_summary)
         
     with tab4:
         st.container()

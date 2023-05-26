@@ -8,8 +8,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 import src.utils as utils
+import src.session as session
+
 import src.returns.calculate as calculate
 import src.returns.plot as plot
+import src.returns.interpret as interpret
 
 # TODO: perhaps make these common? or create a class for portfolio and add the methods
 from src.portfolio.plot import plot_historical_performance, plot_efficient_frontier
@@ -48,7 +51,14 @@ def display_portfolio_returns_analysis(portfolio_summary):
             #TODO: add a button to execute the simulations
             st.slider("Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
             run_simulation = st.button("Run Simulations", use_container_width=True)
-                
+            
+        with col2:
+            if session.check_for_openai_api_key():
+                if st.button("Ask OpenAI about the validity of this simulation"):
+                    with st.spinner("Waiting for OpenAI API to respond..."):
+                        response = interpret.openai_interpret_montecarlo_simulation(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
+                        st.write(response)
+            
     with forecast_output_container:
         st.markdown("""---""")
         st.markdown('<p style="color:red;">Forecast Simulation Results</p>',unsafe_allow_html=True)

@@ -12,14 +12,13 @@ logger.setLevel(logging.INFO)
 
 # refactored project in a structure and had issues with relative imports, so using absolute imports
 import src.utils as utils
+import src.session as session
 
 import src.portfolio.plot as plot
 import src.portfolio.interpret as interpret
 import src.portfolio.calculate as calculate
 
-from config import OPENAI_API_KEY, FRED_API_KEY
 
-#TODO: refactor display into a display file per tab, ditto for utils & plots
 def display_selected_portfolio_table(portfolio_df, portfolio_summary):
     expected_return = portfolio_summary["portfolio_return"]
     initial_investment = portfolio_summary["initial_investment"]
@@ -127,6 +126,8 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                 
             with col2:
                 # Display portfolio details
+                # TODO: refactor the plots to just create the figure to plot and plot within here so can reuse the plots
+                # in various layouts
                 plot.plot_historical_performance(portfolio_summary["stock_data"], 
                                                   portfolio_summary["dividend_data"], 
                                                   portfolio_summary["start_date"], 
@@ -139,32 +140,19 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                 plot.plot_efficient_frontier_bar_chart(efficient_portfolios, portfolio_summary, optimal_portfolio)  
                 
             with col1:
-                # Initialize the API key and the flag in the session state if they are not already present
-                if 'openai_api_key' not in st.session_state:
-                    # Import OPENAI_API_KEY only if it has a non-empty value and is not "None"
-                    if OPENAI_API_KEY and OPENAI_API_KEY.strip() and OPENAI_API_KEY != "None":
-                        st.session_state.openai_api_key = OPENAI_API_KEY
-                        st.session_state.key_provided = True
-                    else:
-                        st.session_state.openai_api_key = ""
-                        st.session_state.key_provided = False
-
-                if not st.session_state.key_provided:
+                if not session.check_for_openai_api_key():
                     label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
                     temp_key = st.text_input(label, value=st.session_state.openai_api_key)
                     if temp_key:
-                        st.session_state.openai_api_key = temp_key
-                        st.session_state.key_provided = True
+                        session.set_openai_api_key(temp_key)
 
-                # Create a placeholder for API response message
-                placeholder = st.empty()
-
-                if st.session_state.key_provided and st.session_state.openai_api_key != "None":
+                if session.check_for_openai_api_key():
                     #print(f"OpenAI API Key: {st.session_state.openai_api_key} of type {type(st.session_state.openai_api_key)}")
                     if st.button("Ask OpenAI to Interpret Results"):
                         # Display a message indicating the application is waiting for the API to respond
                         with st.spinner("Waiting for OpenAI API to respond..."):
-                            interpret.openai_interpret_portfolio_summary(portfolio_summary, st.session_state.openai_api_key)
+                            response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
+                            st.write(response)
 
                 st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
                 st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")
