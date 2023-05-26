@@ -125,7 +125,7 @@ def calculate_box_data(results):
     
     return df_box
 
-def calculate_simulation_future_returns(results):        
+def summarize_simulation_results(results):        
     start_time = time.time()
     with st.spinner(f'Calculating plots... at time of ' + datetime.now().strftime('%H:%M:%S.%f')[:-3]):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -305,6 +305,7 @@ def plot_probability_density_for_a_given_year_v0(year, values):
 
     return probability_bands, xticks, fig, year
 
+# TODO: remove this from here and move to the plot.py
 def calculate_sigma_color(sigma):
     colors = ["#FFD700", "#FFA500","#FF8C00","#FF4500","#FF0000"]
     

@@ -37,11 +37,12 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
     if not isinstance(start_date, str) or not isinstance(end_date, str):
         raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
     
-    #TODO: can this be optimized to not call yf.download twice?
+    data = yf.download(tickers, start=start_date, end=end_date)
+    
+    stock_data = data["Adj Close"]
     dividend_data = get_dividend_data(tickers, start_date, end_date)
 
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-    return data, dividend_data
+    return stock_data, dividend_data.fillna(0)
 
 @st.cache_data
 def get_stock_data(tickers, start_date, end_date):

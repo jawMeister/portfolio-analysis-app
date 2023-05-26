@@ -1,8 +1,4 @@
 import streamlit as st
-import traceback
-import numpy as np
-
-from dateutil.relativedelta import relativedelta
 
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
@@ -25,14 +21,20 @@ from config import OPENAI_API_KEY, FRED_API_KEY
 def display_portfolio_returns_analysis(portfolio_summary):
     st.subheader("Analysis leveraging Monte Carlo simulations on historical volatility to estimate future returns")
     simulation_results = None
+    input_container = st.container()
+    forecast_output_container = st.container()
+    backtest_output_container = st.container()
     
-    with st.container():
+    with input_container:
         col1, col2, col3, col4 = st.columns([2,2,2,2])
     
         with col1:
             subcol1, subcol2 = st.columns([1,1])
             with subcol1:
-                distribution = st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), key="volatility_distribution")
+                if "volatility_distribution" not in st.session_state:
+                    st.session_state.volatility_distribution = "T-Distribution"
+                    
+                st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), key="volatility_distribution")
                                 
                 if "n_simulations" not in st.session_state:
                     st.session_state.n_simulations = 5000
@@ -47,16 +49,24 @@ def display_portfolio_returns_analysis(portfolio_summary):
             st.slider("Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
             run_simulation = st.button("Run Simulations", use_container_width=True)
                 
-    with st.container():
+    with forecast_output_container:
         st.markdown("""---""")
         st.markdown('<p style="color:red;">Forecast Simulation Results</p>',unsafe_allow_html=True)
         if run_simulation:
             if st.session_state.simulation_mode == "Forecast only" or st.session_state.simulation_mode == "Backtest and Forecast":
-                simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, distribution)
+                simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
 
                 with st.container():
-                    calculate.plot_simulation_results_plotly(simulation_results, portfolio_summary["initial_investment"])
-                
+                    col1, col2, col3 = st.columns([1,1,1])
+                    df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
+                    
+                    with col1:
+                        st.plotly_chart(plot.plot_histogram_data(df_hist))
+                    with col2:
+                        st.plotly_chart(plot.plot_scatter_data(df_scatter))
+                    with col3:
+                        st.plotly_chart(plot.plot_box_data(df_box))
+
                 with st.container():
                     display_simulation_probability_density_plots(simulation_results, portfolio_summary)
     
@@ -124,10 +134,18 @@ def display_portfolio_returns_analysis(portfolio_summary):
                             st.write(actuals_data)  
      
                     # this simulates performance of every asset for years_to_simulate (eg, if 7 years, will have index 0-6)
-                    simulation_results = calculate.run_portfolio_simulations(sim_portfolio_summary, st.session_state.n_simulations, distribution)
+                    simulation_results = calculate.run_portfolio_simulations(sim_portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
 
-                    #analysis.plot_simulation_results(simulation_results)
-                    calculate.plot_simulation_results_plotly(simulation_results, portfolio_summary["initial_investment"])
+                    with st.container():
+                        col1, col2, col3 = st.columns([1,1,1])
+                        df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
+                        
+                        with col1:
+                            st.plotly_chart(plot.plot_histogram_data(df_hist))
+                        with col2:
+                            st.plotly_chart(plot.plot_scatter_data(df_scatter))
+                        with col3:
+                            st.plotly_chart(plot.plot_box_data(df_box))
                     
                     # create the pdf plots for every year in the simulation so we can plot the sigma levels by year in combination with the actuals chart
                     specific_years_to_calculate = list(range(1, years_to_simulate+1)) # 1 to years_to_simulate inclusive, so year 1, 2, 3, 4, etc.
@@ -183,103 +201,8 @@ def display_portfolio_returns_analysis(portfolio_summary):
                                                             actuals_end_date, 
                                                             sim_portfolio_summary["weights"])
                             
-                        final_results_plot = go.Figure()
-                        # add calculated sigma levels to the annual weighted value plot
-                        for year in sigma_levels_by_year.keys():
-                            # x values need to have a data point per month, beginning with the first month past the start date
-                            x0 = actuals_start_date + relativedelta(months = ((year-1) * 12 + 1)) 
-                            x1 = x0 + relativedelta(months = 12)
-                            x_mid_point = x0 + relativedelta(months = 6)
-                                
-                            #print(f"year {year}: x0: {x0}, x1: {x1}")
-                            
-                            for lower_sigma, upper_sigma, probability, lower_edge_value, upper_edge_value in sigma_levels_by_year[year]:
-                                
-                                #print(f"year {year}: lower_sigma: {lower_sigma}, upper_sigma: {upper_sigma}, probability: {probability}, lower_edge_value: {lower_edge_value}, upper_edge_value: {upper_edge_value}")
-                                #year 7: lower_sigma: -2, upper_sigma: -1, probability: 0.14786165197479317, lower_edge_value: 1040792.7317910342, upper_edge_value: 1339530.4912323258
-                                #year 7: lower_sigma: -1, upper_sigma: 0, probability: 0.3828323364399347, lower_edge_value: 1339530.4912323258, upper_edge_value: 1638268.2506736175
-                                #year 7: lower_sigma: 0, upper_sigma: 1, probability: 0.31700283809084806, lower_edge_value: 1638268.2506736175, upper_edge_value: 1937006.0101149091
-                                
-                                # plot the lower sigma level which has lower_edge_value as the y value and label it with lower_sigma
-                                # plot the upper sigma level which has upper_edge_value as the y value and label it with upper_sigma
-                                
-                                lower_edge_value = lower_edge_value//1
-                                upper_edge_value = upper_edge_value//1
-                                y_mid_point = (lower_edge_value + upper_edge_value) / 2
-                        
-                                # lower sigma
-                                lower_edge_color = calculate.calculate_sigma_color(lower_sigma)
-                                final_results_plot.add_trace(go.Scatter(
-                                    x=[x0, x1],
-                                    y=[lower_edge_value, lower_edge_value],
-                                    mode='lines',
-                                    line=dict(color=lower_edge_color, width=1, dash='dashdot'),
-                                    opacity=0.5,
-                                    name=f'{lower_sigma} sigma, ${lower_edge_value:,.0f}',
-                                    hovertemplate='%{y}',
-                                    hoverinfo='name+y',
-                                    showlegend=False
-                                ))
-                                """ good idea to add label, just too busy of a chart
-                                final_results_plot.add_annotation(x=x0, 
-                                          y=np.log10(lower_edge_value), 
-                                          text=f'{lower_sigma} sigma, ${lower_edge_value:,.0f}', 
-                                          showarrow=False, 
-                                          font=dict(color=lower_edge_color),
-                                          bgcolor="#0E1117",
-                                          xanchor="left",
-                                          yanchor="middle")
-                                """
-                                 # add an annotation between the two lines with the probability
-                                final_results_plot.add_annotation(x=x_mid_point, 
-                                          y=np.log10(y_mid_point), 
-                                          text=f'{probability:.0%}', 
-                                          showarrow=False, 
-                                          font=dict(color='orange'),
-                                          bgcolor="#0E1117")
-                                
-                                # upper sigma
-                                upper_edge_color = calculate.calculate_sigma_color(upper_sigma)
-                                final_results_plot.add_trace(go.Scatter(
-                                    x=[x0, x1],
-                                    y=[upper_edge_value, upper_edge_value],
-                                    mode='lines',
-                                    line=dict(color=upper_edge_color, width=1, dash='dashdot'),
-                                    opacity=0.5,
-                                    name=f'{upper_sigma} sigma, ${upper_edge_value:,.0f}',
-                                    hovertemplate='%{y}',
-                                    hoverinfo='name+y',
-                                    showlegend=False
-                                ))
-                                """ good idea to add label, just too busy of a chart
-                                final_results_plot.add_annotation(x=x0, 
-                                          y=np.log10(upper_edge_value), 
-                                          text=f'{upper_sigma} sigma, ${upper_edge_value:,.0f}', 
-                                          showarrow=False, 
-                                          font=dict(color=lower_edge_color),
-                                          bgcolor="#0E1117",
-                                          xanchor="left",
-                                          yanchor="middle")
-                                """
-                                
-                        # plot actuals_portfolio_values on top of sigma lines
-                        monthly_data = actuals_portfolio_values.copy()
-                        # filter out any rows with NaN as crypto trades on weekends, as may through off the mean
-                        monthly_data.dropna(how='any')
-                        # Resample the data to monthly frequency and calculate the mean value of each stock
-                        monthly_data = actuals_portfolio_values.resample('M').mean()
-                        # filter down to just the total column
-                        monthly_data = monthly_data[['Total']]
-                        #print(f"monthly_data:\n{monthly_data.describe()}")
-                        #print(f"monthly_data:\n{monthly_data.tail()}")
 
-                        final_results_plot.add_trace(go.Scatter(x=monthly_data.index, y=monthly_data['Total'], mode='lines'))
-                        final_results_plot.update_layout(title='Monthly Total Value (Weighted Portfolio)', 
-                                                         xaxis_title='Year', 
-                                                         yaxis_title='Portfolio Value',
-                                                         yaxis=dict(tickformat="$,.0f")) 
-                        final_results_plot.update_yaxes(type='log', automargin=True)
-                    
+                        final_results_plot = plot.plot_backtest_simulation_w_sigma_levels(sigma_levels_by_year, actuals_portfolio_values, actuals_start_date)
                         
                         with final_result_plot_placeholder.container():
                             st.markdown('<p style="color:red;">Backtest Final Results: Comparing Forecast Model Probability Ranges with Actual Historical Results</p>',unsafe_allow_html=True)
