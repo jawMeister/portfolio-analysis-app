@@ -18,7 +18,8 @@ def plot_linear_regression(model, historical_macro_data, X, new_X, predicted_cha
 
     # Loop over each macroeconomic indicator
     for indicator in X.columns:
-
+        logger.debug(f"Portfolio Returns = {model.intercept_:.4f} + ({model.coef_[0]:.4f} * {indicator})")
+    
         # Create a scatter plot of the indicator versus portfolio returns
         scatter = go.Scatter(x=historical_macro_data[indicator], y=historical_macro_data['portfolio_returns'], mode='markers', name='Data')
 
@@ -34,7 +35,6 @@ def plot_linear_regression(model, historical_macro_data, X, new_X, predicted_cha
         # Add the scatter plot and line plot to the list of plots
         plots.append(go.Figure(data=[scatter, line], layout=layout))
 
-
     # Add the prediction to the plots
     for indicator, plot in zip(X.columns, plots):
         prediction = go.Scatter(x=[new_X[indicator].values[0]], y=[predicted_change_in_returns[0]], mode='markers', name='Prediction', marker=dict(color='red'))
@@ -42,6 +42,38 @@ def plot_linear_regression(model, historical_macro_data, X, new_X, predicted_cha
         
     return plots
 
+def plot_linear_regression_v_single_model(model, model_data, factor, y, prediction=None):
+    
+    logger.debug(f"f(x) = {model.intercept_:.4f} + ({model.coef_[0]:.4f} * {factor}), prediction = {prediction['prediction'] if prediction else None}")
+    logger.debug(f"model data keys: {model_data.keys()}")
+    
+    if factor == 'all_factors':
+        x = model_data.drop(columns=[y])
+    else:
+        x = model_data[factor]
+        
+    # Create a scatter plot of the indicator versus portfolio returns
+    scatter = go.Scatter(x=x, y=model_data[y], mode='markers', name='Data')
+
+    # Create a line plot of the fitted values from the regression
+    fitted_values = model.intercept_ + model.coef_[0] * x
+    line = go.Scatter(x=x, y=fitted_values, mode='lines', name='Fitted line')
+
+    # Create a layout
+    layout = go.Layout(title=f'Portfolio Returns vs {factor}',
+                    xaxis=dict(title=factor),
+                    yaxis=dict(title='Portfolio Returns'))
+
+    # Add the scatter plot and line plot to a Plotly Figure object
+    fig = go.Figure(data=[scatter, line], layout=layout)
+
+    # Add the prediction to the plot if provided
+    if prediction is not None:
+        pred_point = go.Scatter(x=[prediction[factor]], y=[prediction['prediction']], mode='markers', name='Prediction', marker=dict(color='red'))
+        fig.add_trace(pred_point)
+        
+    # Display the plot
+    return fig
 
 def plot_macro_vs_portfolio_performance(portfolio_summary, combined_data):
     logger.debug(f"combined data monthly --- First date: {combined_data.index.min()}, Last date: {combined_data.index.max()}")
@@ -103,46 +135,12 @@ def plot_historical_macro_data(historical_macro_data):
         plots.append(fig)
         
     return plots
-
-def plot_portfolio_performance(historical_returns):
-    fig = go.Figure()
-
-    logging.debug(f"historical returns monthly --- First date: {historical_returns.index.min()}, Last date: {historical_returns.index.max()}")
     
-    portfolio_returns = historical_returns['portfolio_returns']
-    logger.debug(f"portfolio returns monthly --- First date: {portfolio_returns.index.min()}, Last date: {portfolio_returns.index.max()}")
-    logger.debug(f"portfolio returns monthly {portfolio_returns}")
-    
-    # Add macroeconomic factor trace
-    fig.add_trace(
-        go.Scatter(x=portfolio_returns.index, y=portfolio_returns, mode='lines'))
-
-    # Set axis titles
-    #fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text='Historical Portfolio Returns')
-    
-    fig.update_layout(
-        title='Portfolio Performance (Weighted Portfolio)<br><sup>(not including dividends)</sup>',
-        yaxis_title='Month to Month Performance',
-        yaxis_tickformat='.1%'
-    )
-
-    return fig
-    
-def plot_historical_portfolio_performance(portfolio_summary):
-    stock_returns = portfolio_summary['stock_data'].pct_change().resample('M').mean()
-    weights = portfolio_summary['weights']
-    
-    st.write(stock_returns)
-    
-    # Ensure weights match the columns of ticker_returns
-    weights = weights.reindex(stock_returns.columns)
+def plot_historical_portfolio_performance(combined_data):
 
     # Calculate portfolio returns absolute
-    portfolio_returns_absolute = (stock_returns.mul(weights, axis=1)).sum(axis=1)
-    cumulative_returns_absolute = (1 + portfolio_returns_absolute).cumprod() - 1
-    
-    st.write(portfolio_returns_absolute)
+    portfolio_returns_absolute = combined_data['portfolio_returns']
+    cumulative_returns_absolute = combined_data['cumulative_returns']
     
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(
