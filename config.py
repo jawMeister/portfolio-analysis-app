@@ -28,6 +28,8 @@ except (FileNotFoundError, AssertionError):
 # Get environment variables, or use values from config file if they're not set
 FRED_API_KEY = os.getenv('FRED_API_KEY', config.get('FRED_API_KEY')) or None
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', config.get('OPENAI_API_KEY')) or None
+FMP_API_KEY = os.getenv('FMP_API_KEY', config.get('FMP_API_KEY')) or None
 
 logger.debug(f"FRED_API_KEY: {mask_key(FRED_API_KEY) if FRED_API_KEY else None}")
 logger.debug(f"OPENAI_API_KEY: {mask_key(OPENAI_API_KEY) if OPENAI_API_KEY else None}")
+logger.debug(f"FMP_API_KEY: {mask_key(FMP_API_KEY) if FMP_API_KEY else None}")

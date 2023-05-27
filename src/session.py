@@ -7,9 +7,9 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
-from config import OPENAI_API_KEY, FRED_API_KEY, mask_key
+from config import OPENAI_API_KEY, FRED_API_KEY, FMP_API_KEY, mask_key
 
 def check_for_openai_api_key():    
     # Initialize the API key and the flag in the session state if they are not already present
@@ -70,3 +70,33 @@ def get_fred_api_key():
 
 def fred_api_key_provided():
     return st.session_state.fred_key_provided
+
+def check_for_fmp_api_key():    
+    # Initialize the API key and the flag in the session state if they are not already present
+    if 'fmp_api_key' not in st.session_state:
+        logger.debug(f"Initializing FMP_API_KEY: {FMP_API_KEY}")
+        # Import OPENAI_API_KEY only if it has a non-empty value and is not "None"
+        if FMP_API_KEY and FMP_API_KEY.strip() and FMP_API_KEY != "None":
+            st.session_state.fmp_api_key = FMP_API_KEY
+            st.session_state.fmp_api_key_provided = True
+        else:
+            st.session_state.fmp_api_key = ""
+            st.session_state.fmp_api_key_provided = False
+    
+    logger.debug(f"FMP_API_KEY: {mask_key(st.session_state.fmp_api_key)}, fmp_key_provided: {st.session_state.fmp_api_key_provided}")
+    return (st.session_state.fmp_api_key_provided and st.session_state.fmp_api_key != "None")
+
+def set_fmp_api_key(api_key):
+    st.session_state.fmp_api_key = api_key
+    st.session_state.fmp_api_key_provided = True
+    
+    return st.session_state.fmp_api_key
+
+def get_fmp_api_key():
+    if check_for_fred_api_key():
+        return st.session_state.fmp_api_key
+    else:
+        return None
+
+def fmp_api_key_provided():
+    return st.session_state.fmp_api_key_provided
