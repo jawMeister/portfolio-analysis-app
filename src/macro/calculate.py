@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import src.session as session
 
@@ -62,21 +62,43 @@ def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
     if macroeconomic_data.index.tz is not None:
         macroeconomic_data.index = macroeconomic_data.index.tz_convert(None)
     
-    # Combine stock returns and macroeconomic data
-    combined_data = pd.concat([stock_returns, macroeconomic_data], axis=1)
+    # Resample stock returns and macroeconomic data separately
+    stock_returns_monthly = stock_returns.sort_index().resample('M').mean()
+    logger.debug(f"stocks_returns_monthly --- First date: {stock_returns_monthly.index.min()}, Last date: {stock_returns_monthly.index.max()}")
     
-    # Resample to monthly frequency
-    combined_data = combined_data.sort_index().resample('M').agg({**{ticker: 'mean' for ticker in portfolio_summary["tickers"]}, **{factor: 'last' for factor in get_macro_factor_list()}})
+    logger.debug(f"stock_returns_month head:\n {stock_returns_monthly.head()}")
+    
+    # Sort by index
+    macroeconomic_data = macroeconomic_data.sort_index()
+
+    logger.debug(f"macro data --- First date: {macroeconomic_data.index.min()}, Last date: {macroeconomic_data.index.max()}")
+    logger.debug(f"macro data head:\n{macroeconomic_data.head()}")
+
+    # Define aggregation dictionary
+    agg_dict = {factor: 'last' for factor in get_macro_factor_list()}
+    logger.debug(f"agg_dict: {agg_dict}")
+    
+    # Resample and aggregate
+    macroeconomic_data_monthly = macroeconomic_data.resample('M').agg(agg_dict)
+    logger.debug(f"macro data monthly --- First date: {macroeconomic_data.index.min()}, Last date: {macroeconomic_data_monthly.index.max()}")
+    logger.debug(f"macro data monthly head:\n{macroeconomic_data_monthly.head()}")
+    
+    # Combine resampled stock returns and macroeconomic data
+    combined_data = pd.concat([stock_returns_monthly, macroeconomic_data_monthly], axis=1)
+    logger.debug(f"combined data monthly --- First date: {combined_data.index.min()}, Last date: {combined_data.index.max()}")
+    logger.debug(f"combined data monthly head:\n{combined_data.head()}")
     
     # Drop any rows with missing values
     #combined_data = combined_data.dropna()
     
     # The dependent variable (y) is the portfolio returns
     portfolio_returns_absolute = (combined_data[portfolio_summary['tickers']].mul(portfolio_summary['weights'], axis=1)).sum(axis=1)
+    logger.debug("portfolio_returns_absolute.head():\n{}".format(portfolio_returns_absolute.head()))
     combined_data['portfolio_returns'] = portfolio_returns_absolute
 
     # Calculate cumulative returns
     cumulative_returns_absolute = (1 + portfolio_returns_absolute).cumprod() - 1
+    logger.debug("cumulative_returns_absolute.head():\n{}".format(cumulative_returns_absolute.head()))
     combined_data['cumulative_returns'] = cumulative_returns_absolute
     
     logger.debug("combined_data.head():\n{}".format(combined_data.head()))
@@ -85,7 +107,10 @@ def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
     
     # The dependent variable (y) is the portfolio returns
     combined_data['portfolio_returns'] = combined_data[portfolio_summary['tickers']].dot(portfolio_summary['weights'])
-
+    logger.debug("after dot product combined_data.head():\n{}".format(combined_data.head()))
+    logger.debug("after dot product combined_data.tail():\n{}".format(combined_data.tail()))
+    logger.debug("after dot product combined_data.describe():\n{}".format(combined_data.describe()))
+    
     return combined_data
 
 # model how changes in the interest rate and inflation have historically impacted the returns of our portfolio.
