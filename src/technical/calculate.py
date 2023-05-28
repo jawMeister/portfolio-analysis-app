@@ -90,6 +90,7 @@ def calculate_indicators(df, period=14):
 
     return df
 
+# Calculate signals
 def calculate_signals(df):
     # Initialize signals to neutral
     df['sma_signal'] = 'Neutral'
