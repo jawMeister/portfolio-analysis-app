@@ -8,6 +8,28 @@ import streamlit as st
 # Fetch and resample data
 # TODO: use Close or Adj Close?
 # TODO: migrate to use a DB at some point
+"""
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Create SQLite engine and session
+engine = create_engine('sqlite:///stock_data.db')
+Session = sessionmaker(bind=engine)
+
+# In fetch_resample_data function, before returning data
+session = Session()
+daily_data.to_sql(ticker + '_daily', con=engine, if_exists='replace')
+weekly_data.to_sql(ticker + '_weekly', con=engine, if_exists='replace')
+monthly_data.to_sql(ticker + '_monthly', con=engine, if_exists='replace')
+session.commit()
+
+# In analyze_ticker function, before fetching data
+session = Session()
+daily_data = pd.read_sql_table(ticker + '_daily', con=engine)
+weekly_data = pd.read_sql_table(ticker + '_weekly', con=engine)
+monthly_data = pd.read_sql_table(ticker + '_monthly', con=engine)
+session.close()
+"""
 @st.cache_data
 def get_ticker_data(ticker, start_date, end_date):
     daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
