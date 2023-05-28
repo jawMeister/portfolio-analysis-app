@@ -17,5 +17,4 @@ wikipedia
 tiktoken
 altair
 stqdm
-TA-Lib
 ta

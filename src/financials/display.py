@@ -25,8 +25,9 @@ def initialize_input_variables(portfolio_summary):
     
     # TODO: periods max based on token limit going to open ai for financials processing
     # as of 5/28/2023, 4 periods is the max as it is 1,000 tokens
-    if 'n_periods' not in st.session_state:
-        st.session_state['n_periods'] = 4
+    # gets initialized in the radio button below
+    #if 'n_periods' not in st.session_state:
+    #    st.session_state['n_periods'] = 4
         
     if 'tickers_for_financials' not in st.session_state:
         tickers_default = ""
@@ -80,7 +81,7 @@ def display_financials_analysis_for_tickers(tickers):
     for ticker in stqdm(tickers):
         with st.container():
             st.markdown("<hr style='color:#FF4B4B;'>", unsafe_allow_html=True)
-            st.write(f"View Financial Statements and Analysis for {ticker}")
+            st.subheader(f"View Financial Statements and Analysis for {ticker}")
 
             financial_summary = retrieve_and_display_financial_statement_summary(ticker)
             analysis = analyze_financial_statements(financial_summary, ticker)        

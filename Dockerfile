@@ -7,12 +7,12 @@ WORKDIR /app
 # Add the current directory contents into the container at /app
 ADD . /app
 
-RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-RUN tar -xzf ta-lib-0.4.0-src.tar.gz
-WORKDIR /app/ta-lib
-RUN ./configure --prefix=/usr
-RUN make
-RUN make install
+#RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+#RUN tar -xzf ta-lib-0.4.0-src.tar.gz
+#WORKDIR /app/ta-lib
+#RUN ./configure --prefix=/usr
+#RUN make
+#RUN make install
 
 WORKDIR /app
 # Install any needed packages specified in requirements.txt
