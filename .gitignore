@@ -3,3 +3,6 @@ plots
 reports
 __pycache__
 config.yaml
+ta-lib
+*.gz
+*.tar

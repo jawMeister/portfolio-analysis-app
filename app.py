@@ -19,6 +19,7 @@ from src.macro import display as macro
 from src.optimization import display as optimization
 from src.rebalancing import display as rebalancing
 from src.financials import display as financials
+from src.technical import display as technical
 
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
@@ -92,8 +93,8 @@ with st.sidebar:
         st.markdown("Source: [Nobel Prize](https://www.nobelprize.org/prizes/economic-sciences/1990/summary/)")
         
 if tickers and start_date and end_date and initial_investment and years:
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", 
-                                            "Rebalancing Analysis", "Portfolio Optimization","Financials Analysis"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", 
+                                            "Rebalancing Analysis", "Portfolio Optimization","Financials Analysis","Technical Analysis"])
     
     # Calculate portfolio statistics
     portfolio_df, portfolio_summary = \
@@ -118,3 +119,6 @@ if tickers and start_date and end_date and initial_investment and years:
         
     with tab6:
         financials.display_financials_analysis(portfolio_summary)
+        
+    with tab7:
+        technical.display_technical_analysis(portfolio_summary)
