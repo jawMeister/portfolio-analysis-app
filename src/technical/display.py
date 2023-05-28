@@ -9,37 +9,37 @@ def display_technical_analysis(portfolio_summary):
     
     for ticker in ticker_weights_sorted.index:
         with st.container():
-            st.markdown("<hr style='color#FF4B4B:;'>", unsafe_allow_html=True)
-            st.write(f"Technical Analysis of {ticker}")
+            with st.expander(f"{ticker} Technical Analysis", expanded=False):
+                with st.spinner(f"Loading {ticker} data..."):
+                    daily_data, weekly_data, monthly_data = calculate.get_ticker_data(ticker, portfolio_summary['start_date'], portfolio_summary['end_date'])
+
+                daily_data = calculate.calculate_indicators(daily_data)
+                weekly_data = calculate.calculate_indicators(weekly_data)
+                monthly_data = calculate.calculate_indicators(monthly_data)
+
+                daily_signals = calculate.calculate_signals(daily_data)
+                weekly_signals = calculate.calculate_signals(weekly_data)
+                monthly_signals = calculate.calculate_signals(monthly_data)
+                
+                col1, col2, col3 = st.columns(3, gap="large")
+                with col1:
+                    upper, lower = plot.plot_indicators(monthly_data, ticker, "Monthly")
+                    st.plotly_chart(upper, use_container_width=True)
+                    display_technical_signals(monthly_signals)
+                    st.plotly_chart(lower, use_container_width=True)
+                with col2:
+                    upper, lower = plot.plot_indicators(weekly_data, ticker, "Weekly")
+                    st.plotly_chart(upper, use_container_width=True)
+                    display_technical_signals(weekly_signals)
+                    st.plotly_chart(lower, use_container_width=True)
+                with col3:
+                    upper, lower = plot.plot_indicators(daily_data, ticker, "Daily")
+                    st.plotly_chart(upper, use_container_width=True)
+                    display_technical_signals(daily_signals)
+                    st.plotly_chart(lower, use_container_width=True)
+                
+                st.markdown("<hr style='color:#FF4B4B;'>", unsafe_allow_html=True)
             
-            with st.spinner(f"Loading {ticker} data..."):
-                daily_data, weekly_data, monthly_data = calculate.get_ticker_data(ticker, portfolio_summary['start_date'], portfolio_summary['end_date'])
-
-            daily_data = calculate.calculate_indicators(daily_data)
-            weekly_data = calculate.calculate_indicators(weekly_data)
-            monthly_data = calculate.calculate_indicators(monthly_data)
-
-            daily_signals = calculate.calculate_signals(daily_data)
-            weekly_signals = calculate.calculate_signals(weekly_data)
-            monthly_signals = calculate.calculate_signals(monthly_data)
-            
-            col1, col2, col3 = st.columns(3, gap="large")
-            with col1:
-                upper, lower = plot.plot_indicators(monthly_data, ticker, "Monthly")
-                st.plotly_chart(upper, use_container_width=True)
-                display_technical_signals(monthly_signals)
-                st.plotly_chart(lower, use_container_width=True)
-            with col2:
-                upper, lower = plot.plot_indicators(weekly_data, ticker, "Weekly")
-                st.plotly_chart(upper, use_container_width=True)
-                display_technical_signals(weekly_signals)
-                st.plotly_chart(lower, use_container_width=True)
-            with col3:
-                upper, lower = plot.plot_indicators(daily_data, ticker, "Daily")
-                st.plotly_chart(upper, use_container_width=True)
-                display_technical_signals(daily_signals)
-                st.plotly_chart(lower, use_container_width=True)
-
     return daily_data, weekly_data, monthly_data
 
 def display_technical_signals(df):
