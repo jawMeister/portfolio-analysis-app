@@ -237,7 +237,7 @@ def get_financial_statement(statement_type, ticker, period, n_periods):
             raise ValueError("Invalid statement_type. Must be one of ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']")
 
         params = {
-            "period": period,
+            "period": period.lower(),
             "limit": n_periods,
             "apikey": fmp_api_key
         }

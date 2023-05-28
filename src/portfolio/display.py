@@ -142,7 +142,7 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
             with col1:
                 if not session.check_for_openai_api_key():
                     label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
-                    temp_key = st.text_input(label, value=st.session_state.openai_api_key)
+                    temp_key = st.text_input(label, value=session.get_openai_api_key())
                     if temp_key:
                         session.set_openai_api_key(temp_key)
 
