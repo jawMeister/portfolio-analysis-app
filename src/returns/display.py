@@ -15,41 +15,42 @@ import src.returns.plot as plot
 import src.returns.interpret as interpret
 
 # TODO: perhaps make these common? or create a class for portfolio and add the methods
-from src.portfolio.plot import plot_historical_performance, plot_efficient_frontier
+from src.portfolio.plot import plot_historical_performance_by_ticker, plot_portfolio_performance_by_benchmark, plot_month_to_month_portfolio_performance, plot_efficient_frontier
+from src.portfolio.calculate import calculate_portfolio_performance
 from src.portfolio.display import display_selected_portfolio_table
 
 from config import OPENAI_API_KEY, FRED_API_KEY
 
+def initialize_session_state_input():
+    if "volatility_distribution" not in st.session_state:
+        st.session_state.volatility_distribution = "T-Distribution"
+    if "n_simulations" not in st.session_state:
+        st.session_state.n_simulations = 5000
+    if "simulation_mode" not in st.session_state:
+        st.session_state.simulation_mode = "Backtest and Forecast"
 
 def display_portfolio_returns_analysis(portfolio_summary):
     simulation_results = None
     input_container = st.container()
     forecast_output_container = st.container()
     backtest_output_container = st.container()
+    initialize_session_state_input()
     
     with input_container:
         col1, col2, col3 = st.columns([2,2,2])
     
         with col1:
-            subcol1, subcol2 = st.columns([1,1])
-            with subcol1:
-                if "volatility_distribution" not in st.session_state:
-                    st.session_state.volatility_distribution = "T-Distribution"
+            with st.form("Simulate Future Returns Leveraging a Monte Carlo Simulation"):
+                subcol1, subcol2 = st.columns([1,1])
+                with subcol1:                
+                    st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), key="volatility_distribution")
+                                    
+                with subcol2:
+                    st.radio("Simulation Mode", ("Forecast only", "Backtest only", "Backtest and Forecast"), key="simulation_mode")
                     
-                st.radio("Returns Distribution for Simulations", ("T-Distribution", "Cauchy", "Normal"), key="volatility_distribution")
-                                
-                if "n_simulations" not in st.session_state:
-                    st.session_state.n_simulations = 5000
-                    
-            with subcol2:
-                if "simulation_mode" not in st.session_state:
-                    st.session_state.simulation_mode = "Backtest and Forecast"
-                    
-                st.radio("Simulation Mode", ("Forecast only", "Backtest only", "Backtest and Forecast"), key="simulation_mode")
-                
-            #TODO: add a button to execute the simulations
-            st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
-            run_simulation = st.button("Run Simulations", use_container_width=True)
+                st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer and uses more browser memory)", min_value=500, max_value=25000, step=500, key="n_simulations")
+                run_simulation = st.form_submit_button("Run Simulations", use_container_width=True)
+            st.caption("The Monte Carlo simulation leverages historical volatility to randomize future returns. Backtest results will not be saved in session.")
             
         with col2:
             if session.check_for_openai_api_key():
@@ -184,10 +185,10 @@ def display_portfolio_returns_analysis(portfolio_summary):
 
                     with col3:
                         plot_historical_performance(actuals_data, 
-                                                        sim_portfolio_summary["dividend_data"], 
-                                                        actuals_start_date, 
-                                                        actuals_end_date, 
-                                                        sim_portfolio_summary["weights"])
+                                                    sim_portfolio_summary["dividend_data"], 
+                                                    actuals_start_date, 
+                                                    actuals_end_date, 
+                                                    sim_portfolio_summary["weights"])
                         
 
                     final_results_plot = plot.plot_backtest_simulation_w_sigma_levels(sigma_levels_by_year, actuals_portfolio_values, actuals_start_date)
@@ -207,6 +208,23 @@ def display_portfolio_returns_analysis(portfolio_summary):
                             st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
                             st.write("Backtest simulation of max sharpe portfolio (PLACEHOLDER)")
                             st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
+
+def plot_historical_performance(actuals_data, dividend_data, start_date, end_date, weights):
+    df_dict = calculate_portfolio_performance(actuals_data, 
+                                                        dividend_data, 
+                                                        weights, 
+                                                        start_date, 
+                                                        end_date)    
+        
+    performance_by_ticker = plot_historical_performance_by_ticker(df_dict)
+    portfolio_performance_by_benchmark = plot_portfolio_performance_by_benchmark(df_dict)
+    month_to_month_portfolio_performance = plot_month_to_month_portfolio_performance(df_dict)
+        
+    st.plotly_chart(performance_by_ticker, use_container_width=True)
+    st.plotly_chart(portfolio_performance_by_benchmark, use_container_width=True)
+    st.plotly_chart(month_to_month_portfolio_performance, use_container_width=True) 
+    
+    
 
 def display_simulation_future_returns_results(simulation_results):
     col1, col2, col3 = st.columns(3, gap="large")
@@ -249,11 +267,9 @@ def display_simulation_probability_density_plots(specific_years_to_plot, plots_b
 def display_setup_simulation_portfolio(portfolio_summary):
     
     test_ratio = calculate.calculate_test_ratio(portfolio_summary)
-    #print(f"test_ratio: {test_ratio}")
+
     simulation_data, actuals_data = calculate.split_data(portfolio_summary["stock_data"], test_ratio)
     simulation_dividends, _ = calculate.split_data(portfolio_summary["dividend_data"], test_ratio)
-    #print(f"simulation_data: {simulation_data.tail()}")
-    #print(f"actuals_data: {actuals_data.tail()}")
     
     sim_start_date = simulation_data.index[0]
     sim_end_date = simulation_data.index[-1]

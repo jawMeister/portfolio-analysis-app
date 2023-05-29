@@ -125,15 +125,26 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                                           portfolio_summary["years"])
                 
             with col2:
-                # Display portfolio details
-                # TODO: refactor the plots to just create the figure to plot and plot within here so can reuse the plots
-                # in various layouts
-                plot.plot_historical_performance(portfolio_summary["stock_data"], 
-                                                  portfolio_summary["dividend_data"], 
-                                                  portfolio_summary["start_date"], 
-                                                  portfolio_summary["end_date"], 
-                                                  portfolio_summary["weights"])
+                #plot.plot_historical_performance(portfolio_summary["stock_data"], 
+                #                                  portfolio_summary["dividend_data"], 
+                #                                  portfolio_summary["start_date"], 
+                #                                  portfolio_summary["end_date"], 
+                #                                  portfolio_summary["weights"])
                             
+                df_dict = calculate.calculate_portfolio_performance(portfolio_summary["stock_data"], 
+                                                                    portfolio_summary["dividend_data"], 
+                                                                    portfolio_summary["weights"], 
+                                                                    portfolio_summary["start_date"], 
+                                                                    portfolio_summary["end_date"])    
+                    
+                performance_by_ticker = plot.plot_historical_performance_by_ticker(df_dict)
+                portfolio_performance_by_benchmark = plot.plot_portfolio_performance_by_benchmark(df_dict)
+                month_to_month_portfolio_performance = plot.plot_month_to_month_portfolio_performance(df_dict)
+                    
+                st.plotly_chart(performance_by_ticker, use_container_width=True)
+                st.plotly_chart(portfolio_performance_by_benchmark, use_container_width=True)
+                st.plotly_chart(month_to_month_portfolio_performance, use_container_width=True) 
+
             with col3:
                 # Display portfolio details
                 plot.plot_efficient_frontier(efficient_portfolios, portfolio_summary, optimal_portfolio)

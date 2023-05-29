@@ -1,7 +1,15 @@
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 from src import utils
+
+import logging
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
+
+# Set up logger for a specific module to a different level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def update_forecast_info(forecasted_stock_info, ticker, current_asset_price, dividend_yield, yearly_dividend, current_asset_shares, current_asset_value, year):
     forecasted_stock_info.loc[year, 'Year'] = year
@@ -159,3 +167,77 @@ def split_data(data, train_size=0.8):
     test_data = data.iloc[split_index:].copy()
 
     return train_data, test_data
+
+def calculate_portfolio_performance(stock_data, dividend_data, weights, start_date, end_date):
+    
+    stock_data.index = stock_data.index.tz_localize(None)
+    dividend_data.index = dividend_data.index.tz_localize(None)
+    
+    # Calculate daily returns
+    daily_returns = stock_data.pct_change()
+
+    # Calculate daily dividend returns
+    daily_dividend_returns = dividend_data / stock_data.shift()
+
+    # Calculate total returns
+    daily_total_returns = daily_returns + daily_dividend_returns
+
+    # TODO: Calculate portfolio returns and adjust for weights for any stock/asset that did not exist for the full time series
+    # eg., BTC-USD or a stock that had an IPO in the middle of the time series
+    adjusted_weights = adjust_weights(weights, stock_data)
+    #daily_portfolio_returns = (daily_total_returns.mul(adjusted_weights, axis=1)).sum(axis=1)
+    daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1)
+
+    # Download S&P 500 data for benchmarking
+    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
+    # Align sp500 to daily_portfolio_returns
+    sp500 = sp500.reindex(daily_portfolio_returns.index).ffill()
+
+    # Calculate relative returns
+    portfolio_returns_relative_to_sp500 = daily_portfolio_returns - sp500
+
+    # Download risk-free rate data
+    rf_rate = utils.retrieve_risk_free_rate(start_date, end_date)
+    daily_rf_rate = rf_rate.reindex(daily_portfolio_returns.index, method='ffill')['risk_free_rate']
+
+    portfolio_returns_relative_to_rf = daily_portfolio_returns - daily_rf_rate
+
+    # to resample for monthly returns
+    """
+    df_returns_monthly = daily_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_dividend_returns_monthly = daily_dividend_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_total_returns_monthly = daily_total_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_portfolio_returns_monthly = daily_portfolio_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = sp500.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_portfolio_returns_relative_to_sp500_monthly = portfolio_returns_relative_to_sp500.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_portfolio_returns_relative_to_rf_monthly = portfolio_returns_relative_to_rf.resample('M').apply(lambda x: (1 + x).prod() - 1)       
+    """
+
+    
+    df_dict = {"df_returns_by_ticker": daily_returns,
+                "df_dividend_returns_by_ticker": daily_dividend_returns,
+                "df_total_returns_by_ticker": daily_total_returns,
+                "df_weighted_portfolio_returns": daily_portfolio_returns,
+                "df_sp500_returns": sp500,
+                "df_portfolio_returns_relative_to_sp500": portfolio_returns_relative_to_sp500,
+                "df_portfolio_returns_relative_to_rf": portfolio_returns_relative_to_rf
+                }
+
+    return df_dict 
+
+def adjust_weights(weights, stock_data):
+    # Create a DataFrame of the current trading status of each stock
+    is_trading = ~stock_data.isna()
+
+    # Convert weights into a DataFrame with the same index and columns as is_trading
+    weights_df = pd.DataFrame(index=is_trading.index, columns=is_trading.columns)
+    for ticker in weights.index:
+        weights_df[ticker] = weights[ticker]
+    
+    # Adjust the weights for non-zero tickers
+    adjusted_weights_df = weights_df.mul(is_trading).div(is_trading.mul(weights_df).sum(axis=1), axis='index')
+    
+    # Convert adjusted weights DataFrame back to Series
+    adjusted_weights = adjusted_weights_df.sum()
+
+    return adjusted_weights

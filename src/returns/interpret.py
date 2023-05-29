@@ -19,7 +19,7 @@ def openai_interpret_montecarlo_simulation(portfolio_summary, number_of_simulati
                                     "to simulate future returns by leveraging a {volatility_distribution} for volatily per asset to establish random returns. "
         
         question = portfolio_stats + \
-                    "As a financial advisor, what is your assessment of this portfolio, " + \
+                    "What is your assessment of this portfolio, " + \
                     "how valid are the assumptions made in the Monte Carlo Simulation and " + \
                     "how should I interpret the simulation results which plot probability densities by year? " + \
                     "What are your recommendations for optimizing potential returns and what other analyses do you recommend for the portfolio? "

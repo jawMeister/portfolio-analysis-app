@@ -498,7 +498,7 @@ def calculate_test_ratio(portfolio_summary):
     return test_ratio
 
 def split_data(data, train_size=0.8):
-    data.index = data.index.tz_convert(None)
+    data.index = data.index.tz_localize(None)
     split_index = int(len(data) * train_size)
     split_date = data.index[split_index].date()
 

@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
@@ -34,7 +35,7 @@ def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_po
     # Add a point for the max sharpe portfolio
     fig.add_trace(go.Scatter(x=[efficient_portfolios[-1]['volatility']], y=[efficient_portfolios[-1]['portfolio_return']], mode='markers', name='Max Sharpe Portfolio', marker=dict(size=10, color='yellow')))
 
-    fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', autosize=True)
+    fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', autosize=True,  legend=dict(x=0,y=1))
 
     st.plotly_chart(fig, use_container_width=True)
     
@@ -165,11 +166,21 @@ def plot_efficient_frontier_bar_chart(efficient_portfolios, selected_portfolio, 
             y=asset_weights_df[portfolio_name],
         ))
 
-    fig.update_layout(barmode='stack', title_text='Portfolio Weights Comparison')
+    fig.update_layout(barmode='stack', title_text='Portfolio Weights Comparison', 
+                      legend=dict(
+                                yanchor="top",
+                                y=-0.12,
+                                xanchor="left",
+                                x=0.02,
+                                orientation="h",  # Horizontal orientation
+
+                        )
+                      )
+    
     st.plotly_chart(fig, use_container_width=True)
     
 
-def plot_historical_performance(stock_data, dividend_data, start_date, end_date, selected_portfolio_weights):
+def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_date, selected_portfolio_weights):
 
     # Retrieve S&P 500 data, risk-free rate data and calculate portfolio value
     sp500_data = utils.retrieve_historical_data('^GSPC', start_date, end_date)
@@ -200,10 +211,6 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
 
     # Calculate portfolio returns relative 
     portfolio_returns_sp500 = (stock_returns * weights).sum(axis=1)
-    #portfolio_returns_risk_free = (stock_returns.mul(weights, axis=1) - risk_free_rate_returns).sum(axis=1)
-    # Calculate relative performance ******************************************************
-    #relative_performance_sp500 = stock_returns.sub(sp500_returns, axis='columns')
-    #cumulative_relative_performance_sp500 = (1 + relative_performance_sp500).cumprod() - 1
     
     # Before calculating the dividend_yield, ensure that both dataframes have the same timezone
     if stock_data.index.tz is not None and monthly_dividend_data.index.tz is None:
@@ -254,31 +261,6 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     )
     
     st.plotly_chart(fig5, use_container_width=True)
-    
-    #TODO: fix this chart as the dividend yield is not correct
-    """ 
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(
-        x=cumulative_dividend_return.index,
-        y=cumulative_dividend_return,
-        fill='tozeroy',
-        mode='lines',
-        name='Cumulative Dividends Relative to S&P 500 (Weighted Portfolio)'
-    ))
-    fig3.add_trace(go.Scatter(
-        x=cumulative_total_returns.index,
-        y=cumulative_total_returns,
-        fill='tonexty',
-        mode='lines',
-        name='Total Cumulative Relative to S&P 500 (Weighted Portfolio)'
-    ))
-    fig3.update_layout(
-        title='Cumulative Performance Relative to S&P 500 (Weighted Portfolio)',
-        xaxis_title='Date',
-        yaxis_title='Cumulative Relative Performance',
-        yaxis_tickformat='.1%'
-    )
-    """
 
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(
@@ -288,15 +270,7 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
         mode='lines',
         name='Cumulative Relative to S&P 500 (Weighted Portfolio)'
     ))
-    
-    ###
-    #fig3.add_trace(go.Scatter(
-    #    x=relative_performance_sp500.index,
-    #    y=cumulative_returns_absolute,
-    #    mode='lines',
-    #    name='Portfolio Absolute Performance'
-    #))
-    
+
     fig3.update_layout(
         title='Cumulative Performance Relative to S&P 500 (Weighted Portfolio)<br><sup>(not including dividends)</sup>',
         xaxis_title='Date',
@@ -321,183 +295,6 @@ def plot_historical_performance(stock_data, dividend_data, start_date, end_date,
     )
 
     st.plotly_chart(fig1, use_container_width=True)
-
-
-def plot_historical_performance_v0(stock_data, dividend_data, start_date, end_date, selected_portfolio):
-
-    # Retrieve S&P 500 data, risk-free rate data and calculate portfolio value
-    #sp500_data = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
-    sp500_data = calculate.retrieve_historical_data('^GSPC', start_date, end_date)
-    risk_free_rate_data = calculate.retrieve_risk_free_rate(start_date, end_date)
-    portfolio_value = calculate.calculate_weighted_portfolio_index_value(stock_data, selected_portfolio['weights'])
-
-    
-    # Calculate monthly returns for tickers
-    stock_returns = stock_data.pct_change().resample('M').mean()
-    sp500_returns = sp500_data.pct_change().resample('M').mean()
-    risk_free_rate_returns = risk_free_rate_data.resample('M').mean()
-    monthly_dividend_data = dividend_data.resample('M').sum()
-    
-    # Calculate relative performance 
-    relative_performance_sp500 = stock_returns.sub(sp500_returns, axis=0)
-    relative_performance_risk_free = stock_returns.sub(risk_free_rate_returns, axis=0)
-        
-    #print(f"selected portfolio weights: {selected_portfolio['weights']}")
-    #print(f"selected portfolio weight values: {selected_portfolio['weights'].values}")
-    weights = selected_portfolio['weights']
-    
-    # Ensure weights match the columns of ticker_returns
-    weights = weights.reindex(stock_returns.columns)
-    risk_free_rate_returns = risk_free_rate_returns.reindex(stock_returns.index)
-    
-    # Calculate portfolio returns relative 
-    portfolio_returns_sp500 = (stock_returns * weights).sum(axis=1)
-    portfolio_returns_risk_free = (stock_returns.mul(weights, axis=1) - risk_free_rate_returns).sum(axis=1)
-    weighted_dividends = (monthly_dividend_data * weights).sum(axis=1)
-    cumulative_dividend_return = (1 + weighted_dividends).cumprod() - 1
-
-    # Chart 4: Cumulative Performance by Ticker Relative to S&P 500
-    fig5 = go.Figure()
-    for ticker in stock_returns.columns:
-        cumulative_returns_ticker = (1 + relative_performance_sp500[ticker]).cumprod() - 1
-        fig5.add_trace(go.Scatter(
-            x=relative_performance_sp500.index,
-            y=cumulative_returns_ticker,
-            mode='lines',
-            name=f'Cumulative Relative to S&P 500 ({ticker})'
-        ))
-    fig5.update_layout(
-        title='Cumulative Performance by Ticker Relative to S&P 500',
-        xaxis_title='Date',
-        yaxis_title='Cumulative Relative Performance',
-        yaxis_tickformat='.1%'
-    )
-    
-    st.plotly_chart(fig5, use_container_width=True)
-    
-    # Chart 3: Cumulative Performance Relative to S&P 500 (Weighted Portfolio)
-    cumulative_returns_sp500 = (1 + portfolio_returns_sp500).cumprod() - 1
-    
-    print(f"cumulative_returns_sp500: {cumulative_returns_sp500.tail()}")
-    print(f"cumulative_dividend_return: {cumulative_dividend_return.tail()}")
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(
-        x=relative_performance_sp500.index,
-        y=cumulative_returns_sp500,
-        fill='tozeroy',
-        mode='lines',
-        name='Cumulative Relative to S&P 500 (Weighted Portfolio)<br><sup>(not including dividends)</sup>'
-    ))
-    fig3.update_layout(
-        title='Cumulative Performance Relative to S&P 500 (Weighted Portfolio)',
-        xaxis_title='Date',
-        yaxis_title='Cumulative Relative Performance',
-        yaxis_tickformat='.1%'
-    )
-    
-    st.plotly_chart(fig3, use_container_width=True)
-
-    # Chart 1: Monthly Performance Relative to S&P 500 (Weighted Portfolio)
-    fig1 = go.Figure()
-    fig1.add_trace(go.Bar(
-        x=relative_performance_sp500.index,
-        y=portfolio_returns_sp500,
-        name='Relative to S&P 500 (Weighted Portfolio)'
-    ))
-    fig1.update_layout(
-        title='Monthly Performance Relative to S&P 500 (Weighted Portfolio)',
-        xaxis_title='Date',
-        yaxis_title='Relative Performance',
-        yaxis_tickformat='.1%'
-    )
-
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    """
-    # Chart 2: Monthly Performance Relative to Risk-Free Rate (Weighted Portfolio)
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(
-        x=relative_performance_risk_free.index,
-        y=portfolio_returns_risk_free,
-        name='Relative to Risk-Free Rate (Weighted Portfolio)'
-    ))
-    fig2.update_layout(
-        title='Monthly Performance Relative to Risk-Free Rate (Weighted Portfolio)',
-        xaxis_title='Date',
-        yaxis_title='Relative Performance'
-    )
-    st.plotly_chart(fig2)
-    """
-    
-    """
-    # Chart 4: Individual Ticker Performance Relative to S&P 500
-    fig4 = go.Figure()
-    for ticker in stock_returns.keys():
-        fig4.add_trace(go.Scatter(
-            x=relative_performance_sp500.index,
-            y=relative_performance_sp500[ticker],
-            mode='lines',
-            name=f'Relative to S&P 500 ({ticker})'
-        ))
-    fig4.update_layout(
-        title='Individual Ticker Performance Relative to S&P 500',
-        xaxis_title='Date',
-        yaxis_title='Relative Performance (%)'
-    )
-    fig4.show()
-    """
-    
-    """   
-    # Chart 5: Cumulative Performance Relative to S&P 500 (Weighted Portfolio)
-    cumulative_returns_sp500 = (1 + portfolio_returns_sp500).cumprod() - 1
-    fig4 = go.Figure()
-    fig4.add_trace(go.Scatter(
-        x=relative_performance_sp500.index,
-        y=cumulative_returns_sp500,
-        mode='lines',
-        name='Cumulative Relative to S&P 500 (Weighted Portfolio)'
-    ))
-    fig4.update_layout(
-        title='Cumulative Performance Relative to S&P 500 (Weighted Portfolio)',
-        xaxis_title='Date',
-        yaxis_title='Cumulative Relative Performance'
-    )
-    fig4.show()
-    
- 
-    # Create a figure
-    fig1 = go.Figure()
-    fig2 = go.Figure()
-    
-    # Add traces for ticker symbols relative to S&P 500
-    for ticker in stock_returns.keys():
-        fig1.add_trace(go.Scatter(
-            x=relative_performance_sp500.index,
-            y=relative_performance_sp500[ticker],
-            mode='lines',
-            name=f'Relative to S&P 500 ({ticker})'
-        ))
-
-    # Add trace for ticker symbols relative to risk-free rate
-    fig2.add_trace(go.Scatter(
-        x=relative_performance_risk_free.index,
-        y=relative_performance_risk_free.mean(axis=1),
-        mode='lines',
-        name='Relative to Risk-Free Rate (Average)'
-    ))
-
-    # Update layout
-    fig2.update_layout(
-        title='Monthly Performance Relative to Benchmarks',
-        xaxis_title='Date',
-        yaxis_title='Relative Performance'
-    )
-
-    # Show the figure
-    fig1.show()
-    fig2.show()
-    print("********** plot complete ************")
-    """
     
 def plot_historical_dividend_performance(portfolio_summary):
     
@@ -612,3 +409,121 @@ def plot_asset_values(asset_values):
             st.plotly_chart(fig1, use_container_width=True)
         with col3:
             st.plotly_chart(fig3, use_container_width=True)
+
+
+def plot_historical_and_relative_performance(df_returns_monthly, df_total_returns_monthly, df_portfolio_returns_monthly, df_sp500_returns_monthly, df_relative_to_sp500_monthly, df_relative_to_rf_monthly):
+    # relative_performance_sp500 = stock_returns.sub(sp500_returns, axis=0)
+    # cumulative_returns_ticker = (1 + relative_performance_sp500[ticker]).cumprod() - 1
+   # Compute cumulative returns
+    df_cumulative_total_returns_monthly = (1 + df_total_returns_monthly).cumprod() - 1
+    cumulative_portfolio_returns_monthly = (1 + df_portfolio_returns_monthly).cumprod() - 1
+    cumulative_sp500_returns_monthly = (1 + df_sp500_returns_monthly).cumprod() - 1
+    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
+    cumulative_relative_to_rf_monthly = (1 + df_relative_to_rf_monthly).cumprod() - 1
+
+    # Compute percentage performance relative to S&P 500
+    df_cumulative_total_returns_relative_to_sp500 = df_cumulative_total_returns_monthly.div(cumulative_sp500_returns_monthly, axis=0) - 1
+    df_cumulative_returns_by_ticker_relative_to_sp500 = df_relative_to_sp500_monthly
+
+    # (1) total returns by ticker as a line chart
+    fig1 = go.Figure()
+    for col in df_total_returns_monthly.columns:
+        fig1.add_trace(go.Scatter(x=df_total_returns_monthly.index, y=df_total_returns_monthly[col], mode='lines', name=col))
+    fig1.update_layout(title='Total Returns by Ticker', xaxis_title='Date', yaxis_title='Total Returns')
+
+    # (2) total portfolio returns and total portfolio returns vs s&p and total portfolio returns vs risk free rate as three line charts with the total portfolio returns having a fill
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=cumulative_portfolio_returns_monthly.index, y=cumulative_portfolio_returns_monthly, mode='lines', name='Portfolio', fill='tozeroy'))
+    fig2.add_trace(go.Scatter(x=cumulative_relative_to_sp500_monthly.index, y=cumulative_relative_to_sp500_monthly, mode='lines', name='Relative to S&P 500', marker=dict(color='lightseagreen')))
+    fig2.add_trace(go.Scatter(x=cumulative_relative_to_rf_monthly.index, y=cumulative_relative_to_rf_monthly, mode='lines', name='Relative to Risk-Free Rate'))
+    fig2.update_layout(title='Cumulative Total Portfolio Returns & Benchmarks', xaxis_title='Date', yaxis_title='Total Returns')
+
+
+    # (3) month to month portfolio performance (positive and negative) on an absolute basis as a column chart with a line chart of the s&p month to month performance in the same time period
+    fig3 = go.Figure()
+    fig3.add_trace(go.Bar(x=df_portfolio_returns_monthly.index, y=df_portfolio_returns_monthly, name='Portfolio'))
+    fig3.add_trace(go.Scatter(x=df_sp500_returns_monthly.index, y=df_sp500_returns_monthly, mode='lines', name='S&P 500', marker=dict(color='lightseagreen')))
+    fig3.update_layout(title='Month-to-Month Portfolio & S&P 500 Performance', xaxis_title='Date', yaxis_title='Total Returns')
+    
+    return fig1, fig2, fig3
+
+def plot_historical_performance_by_ticker(df_dict):
+    df_total_returns_by_ticker = df_dict['df_total_returns_by_ticker'].resample('M').mean()
+    df_sp500_returns = df_dict['df_sp500_returns'].resample('M').mean()
+    
+    df_total_ticker_returns_relative_to_sp500 = df_total_returns_by_ticker.sub(df_sp500_returns, axis=0)
+    
+    """
+    relative_performance_sp500 = stock_returns.sub(sp500_returns, axis=0)
+    
+    for ticker in stock_returns.columns:
+        cumulative_returns_ticker = (1 + relative_performance_sp500[ticker]).cumprod() - 1
+        
+        fig5.add_trace(go.Scatter(
+            x=relative_performance_sp500.index,
+            y=cumulative_returns_ticker,
+            mode='lines',
+            name=ticker
+        ))
+    """
+    
+    # (1) total returns by ticker as a line chart
+    fig1 = go.Figure()
+    for col in df_total_ticker_returns_relative_to_sp500.columns:
+        cumulative_returns_for_ticker = (1 + df_total_ticker_returns_relative_to_sp500[col]).cumprod() - 1
+        fig1.add_trace(go.Scatter(x=df_total_ticker_returns_relative_to_sp500.index, y=cumulative_returns_for_ticker, mode='lines', name=col))
+    fig1.update_layout(title='Cumulative Returns by Ticker Relative to S&P 500', yaxis_title='Total Returns')
+    
+    fig1.update_yaxes(tickformat='.1%')
+    
+    return fig1
+
+def plot_portfolio_performance_by_benchmark(df_dict):
+    df_portfolio_returns_monthly = df_dict['df_weighted_portfolio_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_relative_to_sp500_monthly = df_dict['df_portfolio_returns_relative_to_sp500'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_relative_to_rf_monthly = df_dict['df_portfolio_returns_relative_to_rf'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+
+    cumulative_portfolio_returns_monthly = (1 + df_portfolio_returns_monthly).cumprod() - 1
+    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
+    cumulative_relative_to_rf_monthly = (1 + df_relative_to_rf_monthly).cumprod() - 1
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    fig.add_trace(
+        go.Scatter(x=cumulative_portfolio_returns_monthly.index, y=cumulative_portfolio_returns_monthly, mode='lines', name='Weighted Portfolio w/Dividends', fill='tozeroy'),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Scatter(x=cumulative_relative_to_sp500_monthly.index, y=cumulative_relative_to_sp500_monthly, mode='lines', name='Protfolio Relative to S&P 500', marker=dict(color='lightseagreen')),
+        secondary_y=True,
+    )
+
+#    fig.add_trace(
+#        go.Scatter(x=cumulative_relative_to_rf_monthly.index, y=cumulative_relative_to_rf_monthly, mode='lines', name='Relative to Risk-Free Rate'),
+#        secondary_y=True,
+#    )
+
+    fig.update_layout(
+        title='Cumulative Total Portfolio (Weighted) Returns & Benchmarks',
+        yaxis_title='Total Returns',
+        yaxis2_title='Relative Returns',
+        legend=dict(x=0,y=1)
+    )
+    
+    fig.update_yaxes(tickformat='.1%', secondary_y=False)
+    fig.update_yaxes(tickformat='.1%', secondary_y=True)
+
+    return fig
+
+def plot_month_to_month_portfolio_performance(df_dict):
+    df_portfolio_returns_monthly  = df_dict['df_weighted_portfolio_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    
+    # (3) month to month portfolio performance (positive and negative) on an absolute basis as a column chart with a line chart of the s&p month to month performance in the same time period
+    fig3 = go.Figure()
+    fig3.add_trace(go.Bar(x=df_portfolio_returns_monthly.index, y=df_portfolio_returns_monthly, name='Portfolio'))
+#    fig3.add_trace(go.Scatter(x=df_sp500_returns_monthly.index, y=df_sp500_returns_monthly, mode='lines', name='S&P 500', marker=dict(color='lightseagreen')))
+    fig3.update_layout(title='Month-to-Month Portfolio (Weighted) Performance', yaxis_title='Total Returns', yaxis_tickformat='.1%')
+
+    return fig3

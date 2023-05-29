@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+import src.session as session
+
 @st.cache_data
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
@@ -402,7 +404,8 @@ def retrieve_historical_data(ticker, start_date, end_date):
 
 @st.cache_data
 def retrieve_risk_free_rate(start_date, end_date):
-    fred = Fred(api_key='XXX')
-    risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date) / 100 / 252
+    fred = Fred(api_key=session.get_fred_api_key())
+    risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date).rename("risk_free_rate").to_frame() / 100 
+    risk_free_rate_data = risk_free_rate_data.resample('D').ffill() / 252 # resample to daily and forward-fill missing data
     return risk_free_rate_data
 
