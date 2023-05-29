@@ -45,7 +45,7 @@ def display_portfolio_returns_analysis(portfolio_summary):
                 if "simulation_mode" not in st.session_state:
                     st.session_state.simulation_mode = "Backtest and Forecast"
                     
-                st.radio("Simulation Mode", ("Backtest and Forecast", "Forecast only", "Backtest only"), key="simulation_mode")
+                st.radio("Simulation Mode", ("Forecast only", "Backtest only", "Backtest and Forecast"), key="simulation_mode")
                 
             #TODO: add a button to execute the simulations
             st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer)", min_value=500, max_value=25000, step=500, key="n_simulations")
@@ -69,21 +69,32 @@ def display_portfolio_returns_analysis(portfolio_summary):
         if run_simulation:
             if st.session_state.simulation_mode == "Forecast only" or st.session_state.simulation_mode == "Backtest and Forecast":
                 simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
+                df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
+                specific_years_to_plot, sigma_levels_by_year, plots_by_year, returns_probability_by_year = create_simulation_probability_density_plots(simulation_results, portfolio_summary)
+                st.session_state.forecast_simulation_complete = True
+#                st.session_state.simulation_results = simulation_results
+                st.session_state.specific_years_to_plot = specific_years_to_plot
+                st.session_state.sigma_levels_by_year = sigma_levels_by_year
+                st.session_state.plots_by_year = plots_by_year
+                st.session_state.returns_probability_by_year = returns_probability_by_year
+                st.session_state.df_hist = df_hist
+                st.session_state.df_scatter = df_scatter
+                st.session_state.df_box = df_box
+                
+        if 'forecast_simulation_complete' in st.session_state and st.session_state.forecast_simulation_complete:
+            with st.container():
+                col1, col2, col3 = st.columns([1,1,1])
+                
+                with col1:
+                    st.plotly_chart(plot.plot_histogram_data(st.session_state.df_hist), use_container_width=True)
+                with col2:
+                    st.plotly_chart(plot.plot_scatter_data(st.session_state.df_scatter), use_container_width=True)
+                with col3:
+                    st.plotly_chart(plot.plot_box_data(st.session_state.df_box), use_container_width=True)
 
-                with st.container():
-                    col1, col2, col3 = st.columns([1,1,1])
-                    df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
-                    
-                    with col1:
-                        st.plotly_chart(plot.plot_histogram_data(df_hist), use_container_width=True)
-                    with col2:
-                        st.plotly_chart(plot.plot_scatter_data(df_scatter), use_container_width=True)
-                    with col3:
-                        st.plotly_chart(plot.plot_box_data(df_box), use_container_width=True)
+            with st.container():
+                display_simulation_probability_density_plots(st.session_state.specific_years_to_plot, st.session_state.plots_by_year, st.session_state.returns_probability_by_year)
 
-                with st.container():
-                    display_simulation_probability_density_plots(simulation_results, portfolio_summary)
-    
 
     #with st.expander("NOT reality, assumes constant growth rate"):
     #    display_asset_values(asset_values)
@@ -215,7 +226,7 @@ def display_simulation_future_returns_results(simulation_results):
             box_plot = plot.plot_box(df_box)
             st.plotly_chart(box_plot, use_container_width=True) 
 
-def display_simulation_probability_density_plots(simulation_results, portfolio_summary):
+def create_simulation_probability_density_plots(simulation_results, portfolio_summary):
     years_in_results = len(simulation_results[0])
     # create density plots for year 1, midpoint and the last simulated year
     specific_years_to_plot = [1, years_in_results//2, years_in_results-1] 
@@ -224,6 +235,10 @@ def display_simulation_probability_density_plots(simulation_results, portfolio_s
                                                                     portfolio_summary["initial_investment"], 
                                                                     portfolio_summary["yearly_contribution"], 
                                                                     specific_years_to_plot)
+                
+    return specific_years_to_plot, sigma_levels_by_year, plots_by_year, returns_probability_by_year
+        
+def display_simulation_probability_density_plots(specific_years_to_plot, plots_by_year, returns_probability_by_year):
                 
     col1, col2, col3 = st.columns([1,1,1], gap="large")
     columns = [col1, col2, col3]                                 

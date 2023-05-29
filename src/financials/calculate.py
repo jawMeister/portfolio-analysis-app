@@ -207,7 +207,7 @@ def retrieve_financial_statements(ticker, period, n_periods, statement_types):
     logger.debug(f"Getting {n_periods} {period} financial statements of {statement_types} for {ticker}")
     # TODO: multi-thread / process this
     financial_statements = {}
-    for financial_statement_type in st.session_state['statement_type']:
+    for financial_statement_type in statement_types:
         logger.info(f"Getting {financial_statement_type} for {ticker}")
         financial_statements[financial_statement_type] = get_financial_statement(financial_statement_type, ticker, st.session_state['period'], st.session_state['n_periods'])
         
