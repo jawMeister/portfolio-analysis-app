@@ -3,6 +3,13 @@ import streamlit as st
 import requests
 import json
 
+import multiprocessing
+import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor
+import time
+
+from stqdm import stqdm
+
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
@@ -11,8 +18,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 import src.session as session
+import src.financials.interpret as interpret
 
-def create_financial_summary_dict(financial_statements, ticker, period, n_periods=2):
+def create_financial_summary_dict(financial_statements, ticker, period, n_periods):
     # Initialize dictionary to hold all dataframes
     dfs_dict = {'Income Statement': None, 'Balance Sheet': None, 'Cash Flow Statement': None}
 
@@ -122,104 +130,6 @@ def create_financial_summary_df(financial_statements, ticker, n_periods, period)
 
     # Return financial summary DataFrame
     return financial_summary
-    
-def generate_financial_summary(financial_statements, ticker, period, n_periods):
-
-    logger.debug(f"Summarizing {n_periods} {period} {financial_statements.keys()} for {ticker}")
-    # Create a summary of key financial metrics for all four periods
-    all_summaries = ""
-    summaries = []
-
-    # loop over each statement type, eg, Income Statement, Balance Sheet, Cash Flow
-    for statement_type in financial_statements:
-        logger.debug(f"Summarizing {statement_type} for ticker {ticker}, expecting {n_periods}, have {len(financial_statements[statement_type])}\n\n")
-        if len(financial_statements[statement_type]) != n_periods:
-            #st.write(f"Expected {n_periods} {period} {statement_type} for {ticker}, found {len(financial_statements[statement_type])}")
-            logger.error(f"Expected {n_periods} {period} {statement_type} for {ticker}, found {len(financial_statements[statement_type])}")
-            #raise ValueError(f"Expected {n_periods} {period} {statement_type} for {ticker}, found {len(financial_statements[statement_type])}")
-        
-        # loop over each statement, eg, 2020-12-31, 2020-09-30, 2020-06-30, 2020-03-31 depending on limit set
-        statements = financial_statements[statement_type]
-        for i, statement in enumerate(statements):
-            logger.debug(f"Summarizing {statement_type} {i+1} for {ticker} from\n{statement}\n\n")
-            if statement_type == "Income Statement":
-                """Net Profit Margin: This is a profitability ratio calculated as net income divided by revenue. 
-                   It represents the percentage of revenue that is net profit.
-
-                   Operating Margin: This is a profitability ratio calculated as operating income divided by revenue. 
-                   It measures what proportion of a company's revenue is left over after paying for variable costs of 
-                   production such as wages, raw materials, etc.
-                """
-                # TODO: store revenue, gross profit, operating income, net income, ebitda, research and development expenses, interest expense
-                net_profit_margin = statement['netIncome'] / statement['revenue'] if statement['revenue'] != 0 else None
-                operating_margin = statement['operatingIncome'] / statement['revenue'] if statement['revenue'] != 0 else None
-
-                summary = f"""
-                    For the period ending {statement['date']}, the company reported the following:
-                    - Revenue: ${statement['revenue']}
-                    - Gross Profit: ${statement['grossProfit']}
-                    - Operating Income: ${statement['operatingIncome']}
-                    - Net Income: ${statement['netIncome']}
-                    - EBITDA: ${statement['ebitda']}
-                    - Research and Development Expenses: ${statement['researchAndDevelopmentExpenses']}
-                    - Interest Expense: ${statement['interestExpense']}
-                    - Net Profit Margin: {net_profit_margin if net_profit_margin else 'N/A'}
-                    - Operating Margin: {operating_margin if operating_margin else 'N/A'}
-            """
-            elif statement_type == "Balance Sheet":
-                """Current Ratio: This is a liquidity ratio that measures a company's ability to 
-                   pay short-term and long-term obligations. A higher current ratio indicates the 
-                   higher capability of clearing its debts over the next 12 months. It's desirable 
-                   to have a higher ratio as it represents good financial health.
-
-                   Debt to Equity Ratio: This is a financial ratio indicating the relative proportion 
-                   of shareholders' equity and debt used to finance a company's assets. The debt to equity 
-                   ratio provides a good understanding of a company's financial leverage.
-                """
-                current_ratio = statement['totalCurrentAssets'] / statement['totalCurrentLiabilities'] if statement['totalCurrentLiabilities'] != 0 else None
-                debt_to_equity = statement['totalDebt'] / statement['totalStockholdersEquity'] if statement['totalStockholdersEquity'] != 0 else None
-
-                summary = f"""
-                    For the period ending {statement['date']}, the company reported the following:
-                    - Total Assets: ${statement['totalAssets']}
-                    - Total Liabilities: ${statement['totalLiabilities']}
-                    - Total Stockholder's Equity: ${statement['totalStockholdersEquity']}
-                    - Cash and Short-term Investments: ${statement['cashAndShortTermInvestments']}
-                    - Long-term Investments: ${statement['longTermInvestments']}
-                    - Total Current Assets: ${statement['totalCurrentAssets']}
-                    - Total Current Liabilities: ${statement['totalCurrentLiabilities']}
-                    - Long-term Debt: ${statement['longTermDebt']}
-                    - Total Debt: ${statement['totalDebt']}
-                    - Net Debt: ${statement['netDebt']}
-                    - Current Ratio: {current_ratio if current_ratio else 'N/A'}
-                    - Debt to Equity Ratio: {debt_to_equity if debt_to_equity else 'N/A'}
-                    """
-            elif statement_type == "Cash Flow Statement":
-                """Cash Flow Margin: This is a profitability ratio calculated as net cash provided by operating activities divided by revenue. 
-                   It represents the percentage of each dollar of revenue that is generated as cash flow from operations.
-                """
-                #cash_flow_margin = statement['netCashProvidedByOperatingActivities'] / statement['revenue'] if statement['revenue'] != 0 else None
-
-                # Calculate financial ratios that might be important
-                # Note: Cash Flow Margin has been removed because 'revenue' is typically not in cash flow statements
-
-                summary = f"""
-                    For the period ending {statement['date']}, the company reported the following:
-                    - Net Income: ${statement['netIncome']}
-                    - Depreciation and Amortization: ${statement['depreciationAndAmortization']}
-                    - Stock Based Compensation: ${statement['stockBasedCompensation']}
-                    - Operating Cash Flow: ${statement['operatingCashFlow']}
-                    - Capital Expenditure: ${statement['capitalExpenditure']}
-                    - Free Cash Flow: ${statement['freeCashFlow']}
-                    - Net Cash used in Investing Activities: ${statement['netCashUsedForInvestingActivites']}
-                    - Net Cash used in Financing Activities: ${statement['netCashUsedProvidedByFinancingActivities']}
-                    """
-            summaries.append(summary)
-
-    # Combine all summaries into a single string
-    all_summaries = "\n\n".join(summaries)
-
-    return all_summaries
 
 @st.cache_data
 def get_financial_statement(statement_type, ticker, period, n_periods):
@@ -250,3 +160,71 @@ def get_financial_statement(statement_type, ticker, period, n_periods):
             return data
         else:
             raise Exception(f"Query failed to run by returning code of {response.status_code}. {response.json()}")
+        
+def retrieve_financial_summary_and_analysis_for_tickers(tickers, period, n_periods, statement_types):
+    start_time = time.time()
+    n_cores = multiprocessing.cpu_count()
+    max_workers = min(n_cores, len(tickers))
+    
+    results = {}
+    with stqdm(total=len(tickers)) as pbar:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for ticker in tickers:
+                results[ticker] = {}
+                results[ticker]['financial_summary'] = None
+                results[ticker]['analysis'] = None
+                logger.debug(f"Submitting {ticker} to executor")
+                future = executor.submit(retrieve_financial_summary_and_analysis, ticker, period, n_periods, statement_types)
+                futures.append(future)
+                
+            for future in concurrent.futures.as_completed(futures):
+                ticker, financial_summary, analysis = future.result()
+                results[ticker]['financial_summary'] = financial_summary
+                results[ticker]['analysis'] = analysis
+                logger.debug(f"finished processing {ticker}")
+                pbar.update(1)
+
+        
+    end_time = time.time()
+    logger.debug(f"The loop took {end_time - start_time} seconds to run")
+    
+    return results
+
+def retrieve_financial_summary_and_analysis(ticker, period, n_periods, statement_types):
+    
+    financial_statements = retrieve_financial_statements(ticker, period, n_periods, statement_types)
+    financial_summary = create_financial_summary_dict(financial_statements, ticker, period, n_periods)
+    analysis = analyze_financial_statements(financial_summary, ticker, period, n_periods)
+    
+    logger.debug(f"Finished processing {ticker}, analysis:\n{analysis}\n\n")
+    
+    return ticker, financial_summary, analysis
+
+def retrieve_financial_statements(ticker, period, n_periods, statement_types):
+    ticker = ticker.upper()
+
+    logger.debug(f"Getting {n_periods} {period} financial statements of {statement_types} for {ticker}")
+    # TODO: multi-thread / process this
+    financial_statements = {}
+    for financial_statement_type in st.session_state['statement_type']:
+        logger.info(f"Getting {financial_statement_type} for {ticker}")
+        financial_statements[financial_statement_type] = get_financial_statement(financial_statement_type, ticker, st.session_state['period'], st.session_state['n_periods'])
+        
+    return financial_statements
+
+def analyze_financial_statements(financial_summary, ticker, period, n_periods):
+    escaped_text = None
+    if session.check_for_openai_api_key():            
+        with st.spinner(f"Waiting for OpenAI API to Analyze Financial Statements for {ticker}..."):
+            response = interpret.openai_analyze_financial_statements_dict(financial_summary, ticker, period, n_periods)
+            logger.debug(f"Analysis for {ticker}:\n{response}")
+            escaped_text = response.replace("$", "\\$")
+            
+    return escaped_text
+    
+    """    with st.expander(f"View Financial Statement Summaries for {ticker}"):
+        for financial_summary_type in financial_summary.keys():
+            st.write(f"Summary of {st.session_state['n_periods']} {financial_summary_type} key metrics for {ticker} across {st.session_state['n_periods']}:")
+            st.write(financial_summary[financial_summary_type]) _summary_
+    """

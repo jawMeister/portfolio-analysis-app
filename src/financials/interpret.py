@@ -10,22 +10,6 @@ logger.setLevel(logging.DEBUG)
 
 import src.session as session
 
-def openai_analyze_financial_statements(all_summaries, ticker, period, n_periods):
-    
-    if session.check_for_openai_api_key():
-        openai.api_key = session.get_openai_api_key()
-        
-        analyze = f"Please analyze the following {period} financial statement data for {ticker} over the {n_periods} provided and " + \
-                    "please summarize results and trends in paragraph form per type of financial statement. "
-        summary = f"Financial statement data points: {all_summaries}.\n"
-        additionally = f"Additionally, write an overall summary on the aggregate results over time including positives as well as any concerns with respect to the overall financial health of the company."
-                    
-        question = analyze + summary + additionally
-        print(f"question: {question}")
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": question}])
-        
-        return chat_completion.choices[0].message.content
-    
     
 def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period, n_periods):
     financial_statement_data =""
@@ -51,5 +35,7 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
         logger.debug(f"question for OpenAI: {question}, len: {len(question)}")
         
         chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": question}])
+        #gpt-4-32k
+        #chat_completion = openai.ChatCompletion.create(model="gpt-4-32k", messages=[{"role": "user", "content": question}])
         
         return chat_completion.choices[0].message.content

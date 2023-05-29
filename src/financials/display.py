@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 print(pd.__version__)
 
-from stqdm import stqdm
-
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
@@ -17,8 +15,8 @@ import src.financials.calculate as calculate
 import src.financials.plot as plot
 
 def initialize_input_variables(portfolio_summary):
-    if 'statement_type' not in st.session_state:
-        st.session_state['statement_type'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
+    if 'statement_types' not in st.session_state:
+        st.session_state['statement_types'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
     
     if 'period' not in st.session_state:
         st.session_state['period'] = 'Annual'
@@ -28,6 +26,8 @@ def initialize_input_variables(portfolio_summary):
     # gets initialized in the radio button below
     #if 'n_periods' not in st.session_state:
     #    st.session_state['n_periods'] = 4
+    if 'financial_summary_and_analysis_by_ticker' not in st.session_state:
+        st.session_state['financial_summary_and_analysis_by_ticker'] = None
         
     if 'tickers_for_financials' not in st.session_state:
         tickers_default = ""
@@ -43,48 +43,17 @@ def initialize_input_variables(portfolio_summary):
         st.session_state['tickers_for_financials'] = tickers_default
         logger.debug(f"Setting tickers_for_financials to {st.session_state['tickers_for_financials']}")
         
-def retrieve_and_display_financial_statement_summary(ticker):
-    ticker = ticker.upper()
 
-    logger.debug(f"Getting {st.session_state['n_periods']} {st.session_state['n_periods']} financial statements for {ticker}")
-    # TODO: multi-thread / process this
-    financial_statements = {}
-    for financial_statement_type in st.session_state['statement_type']:
-        logger.info(f"Getting {financial_statement_type} for {ticker}")
-        financial_statements[financial_statement_type] = calculate.get_financial_statement(financial_statement_type, ticker, st.session_state['period'], st.session_state['n_periods'])
-
-    financial_summary = calculate.create_financial_summary_dict(financial_statements, ticker, st.session_state['n_periods'], st.session_state['n_periods'])
-    with st.expander(f"View Financial Statement Summaries for {ticker}"):
-        for financial_summary_type in financial_summary.keys():
-            st.write(f"Summary of {st.session_state['n_periods']} {financial_summary_type} key metrics for {ticker} across {st.session_state['n_periods']}:")
-            st.write(financial_summary[financial_summary_type]) 
-            
-    return financial_summary
-
-def analyze_financial_statements(financial_summary, ticker):
-    escaped_text = None
-    if session.check_for_openai_api_key():
-        if f"openai_financials_analysis_response_{ticker}" not in st.session_state:
-            st.session_state[f'openai_financials_analysis_response_{ticker}'] = None
-            
-        with st.spinner(f"Waiting for OpenAI API to Analyze Financial Statements for {ticker}..."):
-            response = interpret.openai_analyze_financial_statements_dict(financial_summary, ticker, st.session_state['n_periods'], st.session_state['n_periods'])
-            st.session_state[f'openai_financials_analysis_response_{ticker}'] = response
-                
-        if st.session_state[f'openai_financials_analysis_response_{ticker}']:
-            logger.debug(f"{st.session_state[f'openai_financials_analysis_response_{ticker}']}")
-            escaped_text = f"{st.session_state[f'openai_financials_analysis_response_{ticker}']}".replace("$", "\\$")
-            
-    return escaped_text
-    
 def display_financials_analysis_for_tickers(tickers):
-    for ticker in stqdm(tickers):
+    financial_summaries = st.session_state['financial_summary_and_analysis_by_ticker']
+    for ticker in tickers:
         with st.container():
             st.markdown("<hr style='color:#FF4B4B;'>", unsafe_allow_html=True)
             st.subheader(f"View Financial Statements and Analysis for {ticker}")
 
-            financial_summary = retrieve_and_display_financial_statement_summary(ticker)
-            analysis = analyze_financial_statements(financial_summary, ticker)        
+            financial_summary = financial_summaries[ticker]['financial_summary']
+            analysis = financial_summaries[ticker]['analysis']
+            
             st.write(analysis)    
 
             income_df = financial_summary['Income Statement']
@@ -110,6 +79,15 @@ def display_financials_analysis_for_tickers(tickers):
                     # Trend of Margins Over Time
                     st.plotly_chart(plot.plot_line_chart(income_df, ['net_profit_margin', 'operating_margin'], 'Trend of Net Profit Margin and Operating Margin Over Time'), use_container_width=True)
                     st.plotly_chart(plot.plot_line_chart(cross_df, ['cash_flow_margin'], 'Trend of Cash Flow Margin Over Time'), use_container_width=True)
+                    
+            with st.expander(f"View Income Statements for {ticker}"):
+                st.dataframe(income_df)
+            with st.expander(f"View Balance Sheets for {ticker}"):
+                st.dataframe(balance_df)
+            with st.expander(f"View Cash Flow Statements for {ticker}"):
+                st.dataframe(cash_flow_df)
+            with st.expander(f"View Cross Statement Metrics for {ticker}"):
+                st.dataframe(cross_df)
 
 def display_financials_analysis(portfolio_summary):
     input_container = st.container()
@@ -148,7 +126,16 @@ def display_financials_analysis(portfolio_summary):
             
     with output_container:
         if submitted:
-            display_financials_analysis_for_tickers(tickers)
+            st.session_state['ticker_list'] = tickers
+            with st.spinner("Retrieving financial statements and analyzing..."):
+                financial_summary_and_analysis_by_ticker = calculate.retrieve_financial_summary_and_analysis_for_tickers(st.session_state['ticker_list'], 
+                                                                                                                        st.session_state['period'], 
+                                                                                                                        st.session_state['n_periods'], 
+                                                                                                                        st.session_state['statement_types'])
+            st.session_state['financial_summary_and_analysis_by_ticker'] = financial_summary_and_analysis_by_ticker
+            
+        if 'financial_summary_and_analysis_by_ticker' in st.session_state and st.session_state['financial_summary_and_analysis_by_ticker']:
+            display_financials_analysis_for_tickers(st.session_state['ticker_list'])
 
             
 def display_trend_revenue_description():
