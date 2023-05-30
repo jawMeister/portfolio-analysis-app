@@ -217,6 +217,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
    
     treynor_ratio = calculate_treynor_ratio(simple_returns, weights, start_date, end_date, risk_free_rate)
     
+    # TODO: this sortino may be incorrect as the dot likely nulling out assets with NaN (eg, BTC-USD prior to 2015)
     weighted_returns = simple_returns.dot(weights)
     sortino_ratio_val = sortino_ratio(weighted_returns)
     alpha = 0.05

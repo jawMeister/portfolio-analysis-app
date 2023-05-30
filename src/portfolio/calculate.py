@@ -201,18 +201,6 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     daily_rf_rate = rf_rate.reindex(daily_portfolio_returns.index, method='ffill')['risk_free_rate']
 
     portfolio_returns_relative_to_rf = daily_portfolio_returns - daily_rf_rate
-
-    # to resample for monthly returns
-    """
-    df_returns_monthly = daily_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_dividend_returns_monthly = daily_dividend_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_total_returns_monthly = daily_total_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_portfolio_returns_monthly = daily_portfolio_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_returns_monthly = sp500.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_portfolio_returns_relative_to_sp500_monthly = portfolio_returns_relative_to_sp500.resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_portfolio_returns_relative_to_rf_monthly = portfolio_returns_relative_to_rf.resample('M').apply(lambda x: (1 + x).prod() - 1)       
-    """
-
     
     df_dict = {"df_returns_by_ticker": daily_returns,
                 "df_dividend_returns_by_ticker": daily_dividend_returns,
