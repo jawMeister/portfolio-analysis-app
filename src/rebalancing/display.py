@@ -98,16 +98,20 @@ def display_rebalancing_analysis(portfolio_summary):
                 with subcol1:
                     st.radio('Rebalance Strategy (from Efficient Frontier)', utils.get_efficient_frontier_models(), key='rebalance_portfolio_type')
                 with subcol2:
-                    st.radio('Rebalance Returns Model', utils.get_mean_returns_models(), key='rebalance_returns_model_type')
+                    # TODO: allow for additional mean return models, currently having a lot of errors with the rebalancing
+                    # leveraging CAPM or the Weighted model, so punt for now, and come back later to make for a better experience
+                    # st.radio('Rebalance Returns Model', utils.get_mean_returns_models(), key='rebalance_returns_model_type')
+                    st.session_state.rebalance_returns_model_type = 'Historical Returns (Geometric Mean)'
                     
                 # unfortunately, can't use callbacks on the radio button from within a form, so have to calculate the risk extents every time
                 recalculate_risk_extents()
 
                 st.slider('Rebalance Risk Level', min_value=st.session_state.rebalance_min_risk, max_value=st.session_state.rebalance_max_risk, step=0.01, key='rebalance_risk_level', format="%.2f")
                 rebalance = st.form_submit_button('Calculate', use_container_width=True)
-                       
+                  
             st.caption("Calculates affects of selected rebalancing period based on optimal portfolio calculation leveraging trailing months data. " + \
-                        "Other rebalancing approaches (e.g., macro, technical inflection points) along with simulations to optimize rebalancing " + \
+                        "NOTE: not all rebalancing approaches can be solved correctly, particularly for smaller time slices with negative returns.")
+            st.caption("Other rebalancing approaches (e.g., macro, technical inflection points) along with simulations to optimize rebalancing " + \
                         "period and trailing period in progress.")
             
         if rebalance:

@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 import src.session as session
 
@@ -344,6 +344,7 @@ def calculate_covariance_matrix(stock_data):
 
 # TODO: build a custom cache for this as streamlit cache gets a lot of misses
 # due to volume of calls and this call is expensive - ~6s on a 5950x
+@st.cache_data
 def calculate_efficient_portfolios(mu, S, risk_free_rate, num_portfolios=500):
     min_risk, max_sharpe_ratio = calculate_risk_extents(mu, S, risk_free_rate)
     
@@ -402,21 +403,21 @@ def calculate_risk_extents(mu, S, risk_free_rate):
     ef_max_sharpe = EfficientFrontier(mu, S)
     # Calculate the maximum Sharpe ratio portfolio
     max_sharpe_portfolio = ef_max_sharpe.max_sharpe(risk_free_rate=risk_free_rate)
-        
-    def calculate_risk(portfolio, S):
-        # Extract the portfolio weights
-        weights = np.array(list(portfolio.values()))
-    
-        # Calculate the risk of the portfolio
-        risk = np.sqrt(np.dot(weights.T, np.dot(S, weights)))
-        return risk
     
     # Calculate the min / max risk - with some slop factor
     min_risk = calculate_risk(min_volatility_portfolio, S) + 0.005
     max_risk = calculate_risk(max_sharpe_portfolio, S) - 0.005
-        
+                    
     return min_risk, max_risk        
+    
+def calculate_risk(portfolio, S):
+    # Extract the portfolio weights
+    weights = np.array(list(portfolio.values()))
 
+    # Calculate the risk of the portfolio
+    risk = np.sqrt(np.dot(weights.T, np.dot(S, weights)))
+    return risk
+    
 def calculate_portfolio_value(asset_data, weights):
     # Multiply the asset prices by the weights
     weighted_asset_data = asset_data * weights
@@ -461,4 +462,4 @@ def get_mean_returns_models():
     return ["Historical Returns (Geometric Mean)", "Historical Weighted w/Recent Data", "Capital Asset Pricing Model (CAPM)"]
 
 def get_efficient_frontier_models():
-    return ["Minimum Volatility",  "Optimal Portfolio (Sharpe Ratio = 1)", "Maximum Sharpe Ratio", "Selected Risk Level"]
+    return ["Minimum Volatility",  "Balanced Portfolio (Sharpe Ratio = 1)", "Maximum Sharpe Ratio", "Selected Risk Level"]
