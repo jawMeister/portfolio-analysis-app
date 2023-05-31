@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import streamlit as st
 
 from src import utils
 
@@ -189,7 +190,7 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1)
 
     # Download S&P 500 data for benchmarking
-    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
+    sp500 = utils.get_sp500_daily_returns(start_date, end_date)
     # Align sp500 to daily_portfolio_returns
     sp500 = sp500.reindex(daily_portfolio_returns.index).ffill()
 
@@ -229,3 +230,4 @@ def adjust_weights(weights, stock_data):
     adjusted_weights = adjusted_weights_df.sum()
 
     return adjusted_weights
+

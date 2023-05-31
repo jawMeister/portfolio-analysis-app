@@ -10,12 +10,13 @@ import streamlit as st
 import yfinance as yf
 from fredapi import Fred
 
+import traceback
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import src.session as session
 
@@ -23,6 +24,9 @@ import src.session as session
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
 
+    logger.info(f"Getting dividend data for {tickers} from {start_date} to {end_date}")
+    logger.debug("\n".join(traceback.format_stack()))   
+    
     for ticker in tickers:
         stock = yf.Ticker(ticker)
         dividends = stock.history(start=start_date, end=end_date).Dividends
@@ -38,6 +42,9 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
         end_date = end_date.strftime('%Y-%m-%d')
     if not isinstance(start_date, str) or not isinstance(end_date, str):
         raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
+        
+    logger.info(f"Getting stock and dividend data for {tickers} from {start_date} to {end_date}")
+    logger.debug("\n".join(traceback.format_stack()[-2:]))    
     
     data = yf.download(tickers, start=start_date, end=end_date)
     
@@ -55,6 +62,7 @@ def get_stock_data(tickers, start_date, end_date):
     if not isinstance(start_date, str) or not isinstance(end_date, str):
         raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
     
+    logger.info(f"Getting stock data for {tickers} from {start_date} to {end_date}")
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
@@ -73,7 +81,6 @@ def calculate_dividend_yield(stock_data, dividend_data):
 
     return dividend_yield.mean()
 
-@st.cache_data
 def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
     # Calculate the annual dividends and stock prices
     annual_dividends = dividend_data.resample('Y').sum()
@@ -90,6 +97,40 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
     dividend_yield_ema = dividend_yield.ewm(span=span).mean()
 
     return dividend_yield_ema.iloc[-1]
+
+@st.cache_data
+def get_sp500_daily_returns(start_date, end_date):
+    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
+    return sp500
+
+@st.cache_data
+def get_ticker_data(ticker, start_date, end_date):
+    logger.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
+    daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
+    daily_data.dropna(inplace=True)
+
+    weekly_data = daily_data.resample('W').agg(
+        {
+            "Open": "first",
+            "High": "max",
+            "Low": "min",
+            "Close": "last",
+            "Volume": "sum",
+        }
+    )
+
+    monthly_data = daily_data.resample('M').agg(
+        {
+            "Open": "first",
+            "High": "max",
+            "Low": "min",
+            "Close": "last",
+            "Volume": "sum",
+        }
+    )
+
+    return daily_data, weekly_data, monthly_data
+
 
 def calculate_mean_returns(stock_data, mean_returns_model, risk_free_rate):
     
@@ -301,11 +342,13 @@ def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free
 def calculate_covariance_matrix(stock_data):
     return risk_models.CovarianceShrinkage(stock_data).ledoit_wolf()
 
-@st.cache_data
-def calculate_efficient_portfolios(mu, S, risk_free_rate):
+# TODO: build a custom cache for this as streamlit cache gets a lot of misses
+# due to volume of calls and this call is expensive - ~6s on a 5950x
+def calculate_efficient_portfolios(mu, S, risk_free_rate, num_portfolios=500):
     min_risk, max_sharpe_ratio = calculate_risk_extents(mu, S, risk_free_rate)
     
-    risk_range = np.linspace(min_risk, max_sharpe_ratio, 500)
+    # TODO: see if 500 is necessary and/or make it a parameter
+    risk_range = np.linspace(min_risk, max_sharpe_ratio, num_portfolios)
     
     efficient_portfolios = []
     for risk in risk_range:
@@ -313,6 +356,7 @@ def calculate_efficient_portfolios(mu, S, risk_free_rate):
         ef.efficient_risk(risk)
         weights = ef.clean_weights()
         ret, vol, sharpe = ef.portfolio_performance()
+        # TODO: make this efficient_portfolio dict a class / utility function
         efficient_portfolios.append({
             'portfolio_return': ret,
             'volatility': vol,
@@ -347,6 +391,8 @@ def calculate_optimal_portfolio(efficient_portfolios):
 
     return efficient_portfolios[optimal_index]
 
+# TODO: build a custom cache for this as streamlit cache gets a lot of misses
+# due to volume of calls
 def calculate_risk_extents(mu, S, risk_free_rate):
     # Calculate the minimum volatility portfolio
     ef_min_v = EfficientFrontier(mu, S)
@@ -406,7 +452,13 @@ def retrieve_historical_data(ticker, start_date, end_date):
 @st.cache_data
 def retrieve_risk_free_rate(start_date, end_date):
     fred = Fred(api_key=session.get_fred_api_key())
+    logger.info(f"Retrieving risk-free rate from FRED from {start_date} to {end_date}")
     risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date).rename("risk_free_rate").to_frame() / 100 
     risk_free_rate_data = risk_free_rate_data.resample('D').ffill() / 252 # resample to daily and forward-fill missing data
     return risk_free_rate_data
 
+def get_mean_returns_models():
+    return ["Historical Returns (Geometric Mean)", "Historical Weighted w/Recent Data", "Capital Asset Pricing Model (CAPM)"]
+
+def get_efficient_frontier_models():
+    return ["Minimum Volatility",  "Optimal Portfolio (Sharpe Ratio = 1)", "Maximum Sharpe Ratio", "Selected Risk Level"]

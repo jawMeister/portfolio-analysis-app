@@ -15,33 +15,39 @@ import src.financials.calculate as calculate
 import src.financials.plot as plot
 
 def initialize_input_variables(portfolio_summary):
-    if 'statement_types' not in st.session_state:
-        st.session_state['statement_types'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
-    
-    if 'period' not in st.session_state:
-        st.session_state['period'] = 'Annual'
-    
-    # TODO: periods max based on token limit going to open ai for financials processing
-    # as of 5/28/2023, 4 periods is the max as it is 1,000 tokens
-    # gets initialized in the radio button below
-    #if 'n_periods' not in st.session_state:
-    #    st.session_state['n_periods'] = 4
-    if 'financial_summary_and_analysis_by_ticker' not in st.session_state:
-        st.session_state['financial_summary_and_analysis_by_ticker'] = None
+    if 'financials_tab_initialized' not in st.session_state:
+        st.session_state.financials_tab_initialized = False
         
-    if 'tickers_for_financials' not in st.session_state:
-        tickers_default = ""
-        for i, ticker in enumerate(portfolio_summary['tickers']):
-            # strip out the cryptos and anything without a weight
-            if '-USD' not in ticker and portfolio_summary['weights'][ticker] > 0:
-                tickers_default += f"{ticker},"
-                
-        logger.debug(f"tickers_default: {tickers_default}")
-        # remove the last comma
-        tickers_default = tickers_default[:-1]
-                            
-        st.session_state['tickers_for_financials'] = tickers_default
-        logger.debug(f"Setting tickers_for_financials to {st.session_state['tickers_for_financials']}")
+    if not st.session_state.financials_tab_initialized:
+        if 'statement_types' not in st.session_state:
+            st.session_state['statement_types'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
+        
+        if 'period' not in st.session_state:
+            st.session_state['period'] = 'Annual'
+        
+        # TODO: periods max based on token limit going to open ai for financials processing
+        # as of 5/28/2023, 4 periods is the max as it is 1,000 tokens
+        # gets initialized in the radio button below
+        #if 'n_periods' not in st.session_state:
+        #    st.session_state['n_periods'] = 4
+        if 'financial_summary_and_analysis_by_ticker' not in st.session_state:
+            st.session_state['financial_summary_and_analysis_by_ticker'] = None
+            
+        if 'tickers_for_financials' not in st.session_state:
+            tickers_default = ""
+            for i, ticker in enumerate(portfolio_summary['tickers']):
+                # strip out the cryptos and anything without a weight
+                if '-USD' not in ticker and portfolio_summary['weights'][ticker] > 0:
+                    tickers_default += f"{ticker},"
+                    
+            logger.debug(f"tickers_default: {tickers_default}")
+            # remove the last comma
+            tickers_default = tickers_default[:-1]
+                                
+            st.session_state['tickers_for_financials'] = tickers_default
+            logger.debug(f"Setting tickers_for_financials to {st.session_state['tickers_for_financials']}")
+            
+        st.session_state.financials_tab_initialized = True
         
 
 def display_financials_analysis_for_tickers(tickers):

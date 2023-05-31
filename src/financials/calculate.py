@@ -137,6 +137,7 @@ def get_financial_statement(statement_type, ticker, period, n_periods):
         fmp_api_key = session.get_fmp_api_key()
         base_url = "https://financialmodelingprep.com/api/v3"
 
+        logger.info(f"Fetching FMP data: {statement_type} for {ticker} from {base_url} with {n_periods} {period} periods")
         if statement_type == "Income Statement":
             url = f"{base_url}/income-statement/{ticker}"
         elif statement_type == "Balance Sheet":

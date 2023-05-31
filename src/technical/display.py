@@ -1,5 +1,6 @@
 import streamlit as st
 
+import src.utils as utils
 import src.technical.calculate as calculate
 import src.technical.plot as plot
 
@@ -11,7 +12,7 @@ def display_technical_analysis(portfolio_summary):
         with st.container():
             with st.expander(f"{ticker} Technical Analysis", expanded=False):
                 with st.spinner(f"Loading {ticker} data..."):
-                    daily_data, weekly_data, monthly_data = calculate.get_ticker_data(ticker, portfolio_summary['start_date'], portfolio_summary['end_date'])
+                    daily_data, weekly_data, monthly_data = utils.get_ticker_data(ticker, portfolio_summary['start_date'], portfolio_summary['end_date'])
 
                 daily_data = calculate.calculate_indicators(daily_data)
                 weekly_data = calculate.calculate_indicators(weekly_data)

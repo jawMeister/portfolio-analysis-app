@@ -20,6 +20,10 @@ def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_po
     fig = go.Figure()
     returns = [portfolio['portfolio_return'] for portfolio in efficient_portfolios]
     risks = [portfolio['volatility'] for portfolio in efficient_portfolios]
+    
+    xy_min = min(min(returns), min(risks)) - 0.05
+    xy_max = max(max(returns), max(risks)) + 0.05
+    
     fig.add_trace(go.Scatter(x=risks, y=returns, mode='lines', name='Efficient Frontier'))
 
     # Add a point for the selected portfolio
@@ -34,8 +38,10 @@ def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_po
 
     # Add a point for the max sharpe portfolio
     fig.add_trace(go.Scatter(x=[efficient_portfolios[-1]['volatility']], y=[efficient_portfolios[-1]['portfolio_return']], mode='markers', name='Max Sharpe Portfolio', marker=dict(size=10, color='yellow')))
+    
+    fig.add_trace(go.Scatter(x=[xy_min, xy_max], y=[xy_min, xy_max], mode='lines', line=dict(color='grey', dash='dash'), opacity=0.25, showlegend=False))
 
-    fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', autosize=True,  legend=dict(x=0,y=1))
+    fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', xaxis=dict(range=[xy_min, xy_max]), yaxis=dict(range=[xy_min, xy_max]), autosize=True,  legend=dict(x=0,y=1))
 
     st.plotly_chart(fig, use_container_width=True)
     

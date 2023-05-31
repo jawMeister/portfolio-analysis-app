@@ -3,6 +3,7 @@ import streamlit as st
 from pypfopt import expected_returns, risk_models, EfficientFrontier
 from empyrical import sharpe_ratio, sortino_ratio
 from stqdm import stqdm
+import time
 
 import multiprocessing
 import concurrent.futures
@@ -26,32 +27,33 @@ def calculate_rebalance_segments(data, rebalance_period):
 
     return data_segments
 
-def calculate_segment_return(i, data_segments, trailing_period):
+def calculate_segment_return(i, data_segments, trailing_period, rebalance_portfolio_type, rebalance_returns_model_type, risk_level):
     if i >= trailing_period:
         trailing_data = pd.concat(data_segments[i-trailing_period:i])
     else:
         trailing_data = data_segments[i]
 
-    # Calculate the daily returns of the trailing data
-    trailing_returns = trailing_data.pct_change().dropna()
-
+    logger.debug(f"Calculating segment return for segment {i} with head:\n{trailing_data.head()}\nand tail:\n{trailing_data.tail()}")
+                 
     # Calculate the expected returns and the annualized sample covariance matrix of the trailing returns
-    mu = utils.calculate_mean_returns(trailing_data, st.session_state.mean_returns_model, st.session_state.risk_free_rate)
+    mu = utils.calculate_mean_returns(trailing_data, rebalance_returns_model_type, st.session_state.risk_free_rate)
     S = utils.calculate_covariance_matrix(trailing_data)
 
-    # Calculate the efficient portfolios
+    # consider tuning this to calculate a less dense set of efficient portfolios
+    start_time = time.time()
+    logger.debug(f"Calculating efficient portfolios for segment {i} with mu:\n{mu}\nand S:\n{S}")
     efficient_portfolios = utils.calculate_efficient_portfolios(mu, S, st.session_state.risk_free_rate)
+    logger.debug(f"The calculating efficient portfolios takes {time.time() - start_time} seconds to run")
 
     # Find the optimal portfolio
-    optimal_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
+    rebalanced_portfolio = get_portfolio_weights_for_rebalance(efficient_portfolios, rebalance_portfolio_type, mu, S, risk_level)
 
     # Apply the optimal weights to the current segment and calculate the portfolio return for the segment
-    segment_return = (data_segments[i].pct_change() * optimal_portfolio['weights']).sum(axis=1)
+    segment_return = (data_segments[i].pct_change() * rebalanced_portfolio['weights']).sum(axis=1)
     
-    return segment_return, optimal_portfolio['weights']
+    return segment_return, rebalanced_portfolio['weights']
                 
-def optimize_and_apply_weights(data_segments, trailing_period):
-
+def optimize_and_apply_weights(data_segments, trailing_period, rebalance_portfolio_type, rebalance_returns_model_type, risk_level):
     n_cores = multiprocessing.cpu_count()
     optimal_portfolios = []    
     with st.spinner("Calculating rebalanced portfolio..."):
@@ -61,7 +63,7 @@ def optimize_and_apply_weights(data_segments, trailing_period):
             futures = []
             for i in stqdm(range(len(data_segments))):
                 # Extract the trailing data
-                future = executor.submit(calculate_segment_return, i, data_segments, trailing_period)
+                future = executor.submit(calculate_segment_return, i, data_segments, trailing_period, rebalance_portfolio_type, rebalance_returns_model_type, risk_level)
                 futures.append(future)
                 
             for future in futures:
@@ -73,3 +75,62 @@ def optimize_and_apply_weights(data_segments, trailing_period):
             portfolio_return = pd.concat(segment_returns)
 
     return portfolio_return, optimal_portfolios
+
+def get_portfolio_weights_for_rebalance(efficient_portfolios, rebalance_portfolio_type, mu, S, risk_level):
+    
+    if rebalance_portfolio_type == 'Minimum Volatility':
+        rebalanced_portfolio = efficient_portfolios[0]
+    elif rebalance_portfolio_type == 'Maximum Sharpe Ratio':
+        rebalanced_portfolio = efficient_portfolios[-1]
+    elif rebalance_portfolio_type == 'Optimal Portfolio (Sharpe Ratio = 1)':
+        rebalanced_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
+    else:
+        # could be that risk_level selected doesn't map to the risk_level of the efficient portfolios
+        # for this data segment, so need to calculate risk extents each time and if the risk_level
+        # is less than min or greater than max, then need to adjust the risk_level to be within the
+        
+        min_risk, max_risk = efficient_portfolios[0]['volatility'], efficient_portfolios[-1]['volatility']
+        
+        if risk_level < min_risk:
+            risk_level = min_risk
+        elif risk_level > max_risk:
+            risk_level = max_risk
+        
+        start_time = time.time()
+        rebalanced_portfolio = find_exact_portfolio(mu, S, risk_level)
+        logger.debug(f"The calculating exact portfolio takes {time.time() - start_time} seconds to run")    
+        
+        #start_time = time.time()
+        #rebalanced_portfolio = find_closest_portfolio(efficient_portfolios, rebalanced_portfolio['volatility'])
+        #logger.info(f"The calculating closest portfolio takes {time.time() - start_time} seconds to run")
+        
+    return rebalanced_portfolio
+
+def find_closest_portfolio(efficient_portfolios, target_volatility):
+    low, high = 0, len(efficient_portfolios) - 1
+
+    while low < high:
+        mid = (low + high) // 2
+        if efficient_portfolios[mid]['volatility'] < target_volatility:
+            low = mid + 1
+        else:
+            high = mid
+
+    # After the loop, low should be the first portfolio whose volatility is >= target_volatility.
+    # The closest portfolio is either this portfolio or the one before it.
+    if low == 0:
+        return 0
+    elif abs(efficient_portfolios[low - 1]['volatility'] - target_volatility) < abs(efficient_portfolios[low]['volatility'] - target_volatility):
+        return low - 1
+    else:
+        return low
+    
+def find_exact_portfolio(mu, S, risk_level):
+    ef = EfficientFrontier(mu, S)
+    ef.efficient_risk(risk_level)
+    weights = ef.clean_weights()
+    ret, vol, sharpe = ef.portfolio_performance()
+    # TODO: make this dict a class / utility function
+    portfolio = {'weights': weights, 'portfolio_return': ret, 'volatility': vol, 'sharpe_ratio': sharpe}
+    
+    return portfolio

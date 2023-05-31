@@ -22,12 +22,18 @@ from src.portfolio.display import display_selected_portfolio_table
 from config import OPENAI_API_KEY, FRED_API_KEY
 
 def initialize_session_state_input():
-    if "volatility_distribution" not in st.session_state:
-        st.session_state.volatility_distribution = "T-Distribution"
-    if "n_simulations" not in st.session_state:
-        st.session_state.n_simulations = 5000
-    if "simulation_mode" not in st.session_state:
-        st.session_state.simulation_mode = "Backtest and Forecast"
+    if "returns_tab_initialized" not in st.session_state:
+        st.session_state.returns_tab_initialized = False
+        
+    if not "returns_tab_intialized":
+        if "volatility_distribution" not in st.session_state:
+            st.session_state.volatility_distribution = "T-Distribution"
+        if "n_simulations" not in st.session_state:
+            st.session_state.n_simulations = 5000
+        if "simulation_mode" not in st.session_state:
+            st.session_state.simulation_mode = "Backtest and Forecast"
+            
+        st.session_state.returns_tab_initialized = True
 
 def display_portfolio_returns_analysis(portfolio_summary):
     simulation_results = None

@@ -25,12 +25,10 @@ def get_macro_factor_list():
 def get_macro_factor_defaults():
     return {"US Interest Rate": 0.01, "US Inflation Rate": 0.02, "US M2 Money Supply": 0.1, "China M2 Money Supply": 0.15}
 
-
-
 @st.cache_data
 def get_historical_macro_data(start_date, end_date):
     fred = Fred(api_key=session.get_fred_api_key())
-    
+    logger.info(f"Fetching macroeconomic data from FRED from {start_date} to {end_date}")
     # Get macroeconomic data
     us_interest_rate = fred.get_series('GS10', start_date, end_date)  # 10-Year Treasury Constant Maturity Rate
     us_inflation = fred.get_series('T10YIE', start_date, end_date)  # 10-Year Breakeven Inflation Rate

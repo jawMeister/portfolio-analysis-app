@@ -5,9 +5,15 @@ import ta
 import plotly.graph_objects as go
 import streamlit as st
 
-# Fetch and resample data
-# TODO: use Close or Adj Close?
-# TODO: migrate to use a DB at some point
+import logging
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
+
+# Set up logger for a specific module to a different level
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+import src.utils as utils
+
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -30,32 +36,6 @@ weekly_data = pd.read_sql_table(ticker + '_weekly', con=engine)
 monthly_data = pd.read_sql_table(ticker + '_monthly', con=engine)
 session.close()
 """
-@st.cache_data
-def get_ticker_data(ticker, start_date, end_date):
-    daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
-    daily_data.dropna(inplace=True)
-
-    weekly_data = daily_data.resample('W').agg(
-        {
-            "Open": "first",
-            "High": "max",
-            "Low": "min",
-            "Close": "last",
-            "Volume": "sum",
-        }
-    )
-
-    monthly_data = daily_data.resample('M').agg(
-        {
-            "Open": "first",
-            "High": "max",
-            "Low": "min",
-            "Close": "last",
-            "Volume": "sum",
-        }
-    )
-
-    return daily_data, weekly_data, monthly_data
 
 def calculate_indicators(df, period=14):
     # 20w SMA w/21w EMA = bull market support band
