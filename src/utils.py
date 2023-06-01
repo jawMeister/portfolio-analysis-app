@@ -249,12 +249,21 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     ef = EfficientFrontier(mu, S)
     ef.efficient_risk(risk_level)
         
-    simple_returns = stock_data.pct_change().dropna()
+    simple_returns = stock_data.pct_change()
         
+    # cumulative returns
+    cumulative_daily_returns = (1 + stock_data.pct_change()).cumprod() - 1
+    cumulative_daily_returns.reset_index(inplace=True)
+    
+
+
     # Obtain weights, return, volatility, and Sharpe ratio
     weights = ef.clean_weights()
     weights = pd.Series(weights).reindex(simple_returns.columns)
     portfolio_expected_return, volatility, sharpe_ratio = ef.portfolio_performance()
+    
+    weighted_portfolio_returns = stock_data.pct_change().multiply(weights, axis=1).sum(axis=1)
+    cumulative_weighted_portfolio_returns = (1 + weighted_portfolio_returns).cumprod() - 1
    
     treynor_ratio = calculate_treynor_ratio(simple_returns, weights, start_date, end_date, risk_free_rate)
     
@@ -284,9 +293,11 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
                          "sortino_ratio": sortino_ratio_val, 
                          "cvar": cvar,
                          "treynor_ratio": treynor_ratio,
-                         "tickers": weights.index.tolist()}
+                         "tickers": weights.index.tolist(),
+                         "cumulative_weighted_portfolio_returns": cumulative_weighted_portfolio_returns}
         
-    portfolio_df = pd.DataFrame({'Stock': stock_data.columns, 'Weight': weights})
+    portfolio_df = pd.DataFrame({'Stock': stock_data.columns,'Weight': weights})
+    portfolio_df['Cumulative Return'] = cumulative_daily_returns.iloc[-1]
     portfolio_df['Initial Allocation'] = portfolio_df['Weight'] * initial_investment
     portfolio_df['Expected Return (%)'] = mu
     portfolio_df['Expected Dividend Yield (%)'] = calculate_dividend_yield(stock_data, dividend_data)
@@ -463,3 +474,10 @@ def get_mean_returns_models():
 
 def get_efficient_frontier_models():
     return ["Minimum Volatility",  "Balanced Portfolio (Sharpe Ratio = 1)", "Maximum Sharpe Ratio", "Selected Risk Level"]
+
+# calculates cumulative daily returns, each row contains the cumulative return up until that day
+def calculate_cumulative_daily_returns(stock_data):
+    cumulative_returns = (1 + stock_data.pct_change()).cumprod() - 1
+    cumulative_returns.reset_index(inplace=True)
+    
+    return cumulative_returns

@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
     
 def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio):
     # Create a scatter plot for the efficient frontier
@@ -454,31 +454,24 @@ def plot_historical_and_relative_performance(df_returns_monthly, df_total_return
     return fig1, fig2, fig3
 
 def plot_historical_performance_by_ticker(df_dict):
-    df_total_returns_by_ticker = df_dict['df_total_returns_by_ticker'].resample('M').mean()
-    df_sp500_returns = df_dict['df_sp500_returns'].resample('M').mean()
+    # total is returns + dividends
+    df_total_monthly_returns_by_ticker = df_dict['df_returns_by_ticker'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_monthly_returns = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
     
-    df_total_ticker_returns_relative_to_sp500 = df_total_returns_by_ticker.sub(df_sp500_returns, axis=0)
+    logger.debug(f'df_total_monthly_returns_by_ticker: {df_total_monthly_returns_by_ticker.keys()}')
+    logger.debug(f'df total monthly returns by ticker: {df_total_monthly_returns_by_ticker.tail()}')
     
-    """
-    relative_performance_sp500 = stock_returns.sub(sp500_returns, axis=0)
+    total_cumulative_monthly_returns_by_ticker = (1 + df_total_monthly_returns_by_ticker).cumprod() - 1
+    sp500_cumulative_monthly_returns = (1 + df_sp500_monthly_returns).cumprod() - 1
     
-    for ticker in stock_returns.columns:
-        cumulative_returns_ticker = (1 + relative_performance_sp500[ticker]).cumprod() - 1
-        
-        fig5.add_trace(go.Scatter(
-            x=relative_performance_sp500.index,
-            y=cumulative_returns_ticker,
-            mode='lines',
-            name=ticker
-        ))
-    """
+    total_cumulative_monthly_returns_relative_to_sp500 = total_cumulative_monthly_returns_by_ticker.subtract(sp500_cumulative_monthly_returns, axis=0)
+    
     
     # (1) total returns by ticker as a line chart
     fig1 = go.Figure()
-    for col in df_total_ticker_returns_relative_to_sp500.columns:
-        cumulative_returns_for_ticker = (1 + df_total_ticker_returns_relative_to_sp500[col]).cumprod() - 1
-        fig1.add_trace(go.Scatter(x=df_total_ticker_returns_relative_to_sp500.index, y=cumulative_returns_for_ticker, mode='lines', name=col))
-    fig1.update_layout(title='Cumulative Returns by Ticker Relative to S&P 500', yaxis_title='Total Returns')
+    for ticker in total_cumulative_monthly_returns_relative_to_sp500.columns:
+        fig1.add_trace(go.Scatter(x=total_cumulative_monthly_returns_relative_to_sp500.index, y=total_cumulative_monthly_returns_relative_to_sp500[ticker], mode='lines', name=ticker))
+    fig1.update_layout(title='Cumulative Monthly Returns Relative to S&P 500', yaxis_title='Performance Relative to S&P 500')
     
     fig1.update_yaxes(tickformat='.1%')
     
@@ -486,23 +479,24 @@ def plot_historical_performance_by_ticker(df_dict):
 
 def plot_portfolio_performance_by_benchmark(df_dict):
     df_portfolio_returns_monthly = df_dict['df_weighted_portfolio_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_relative_to_sp500_monthly = df_dict['df_portfolio_returns_relative_to_sp500'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_relative_to_rf_monthly = df_dict['df_portfolio_returns_relative_to_rf'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+#    df_relative_to_sp500_monthly = df_dict['df_portfolio_returns_relative_to_sp500'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+#    df_relative_to_rf_monthly = df_dict['df_portfolio_returns_relative_to_rf'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
 
     cumulative_portfolio_returns_monthly = (1 + df_portfolio_returns_monthly).cumprod() - 1
-    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
-    cumulative_relative_to_rf_monthly = (1 + df_relative_to_rf_monthly).cumprod() - 1
+#    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
+#    cumulative_relative_to_rf_monthly = (1 + df_relative_to_rf_monthly).cumprod() - 1
+    cumulative_sp500_returns_monthly = (1 + df_sp500_returns_monthly).cumprod() - 1
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     fig.add_trace(
-        go.Scatter(x=cumulative_portfolio_returns_monthly.index, y=cumulative_portfolio_returns_monthly, mode='lines', name='Weighted Portfolio w/Dividends', fill='tozeroy'),
+        go.Scatter(x=cumulative_portfolio_returns_monthly.index, y=cumulative_portfolio_returns_monthly, mode='lines', name='Weighted Portfolio', fill='tozeroy'),
         secondary_y=False,
     )
 
     fig.add_trace(
-        go.Scatter(x=cumulative_relative_to_sp500_monthly.index, y=cumulative_relative_to_sp500_monthly, mode='lines', name='Protfolio Relative to S&P 500', marker=dict(color='lightseagreen')),
-        secondary_y=True,
+        go.Scatter(x=cumulative_sp500_returns_monthly.index, y=cumulative_sp500_returns_monthly, mode='lines', name='Cumulative S&P 500 Returns', marker=dict(color='lightseagreen')),
     )
 
 #    fig.add_trace(
@@ -511,7 +505,7 @@ def plot_portfolio_performance_by_benchmark(df_dict):
 #    )
 
     fig.update_layout(
-        title='Cumulative Total Portfolio (Weighted) Returns & Benchmarks',
+        title='Cumulative (Weighted) Portfolio Returns & Benchmarks',
         yaxis_title='Total Returns',
         yaxis2_title='Relative Returns',
         legend=dict(x=0,y=1)
@@ -529,7 +523,7 @@ def plot_month_to_month_portfolio_performance(df_dict):
     # (3) month to month portfolio performance (positive and negative) on an absolute basis as a column chart with a line chart of the s&p month to month performance in the same time period
     fig3 = go.Figure()
     fig3.add_trace(go.Bar(x=df_portfolio_returns_monthly.index, y=df_portfolio_returns_monthly, name='Portfolio'))
-#    fig3.add_trace(go.Scatter(x=df_sp500_returns_monthly.index, y=df_sp500_returns_monthly, mode='lines', name='S&P 500', marker=dict(color='lightseagreen')))
-    fig3.update_layout(title='Month-to-Month Portfolio (Weighted) Performance', yaxis_title='Total Returns', yaxis_tickformat='.1%')
+    fig3.add_trace(go.Scatter(x=df_sp500_returns_monthly.index, y=df_sp500_returns_monthly, mode='lines', name='S&P 500', marker=dict(color='lightseagreen')))
+    fig3.update_layout(title='Month-to-Month Portfolio (Weighted) Performance', yaxis_title='Total Returns', yaxis_tickformat='.1%', legend=dict(x=0,y=1))
 
     return fig3

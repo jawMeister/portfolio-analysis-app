@@ -24,7 +24,9 @@ def display_selected_portfolio_table(portfolio_df, portfolio_summary):
     initial_investment = portfolio_summary["initial_investment"]
     logger.debug(f"expected_return: {expected_return}, initial_investment: {initial_investment}")
     
-    st.write(f"\nPortfolio Performance: projected annual return **{expected_return*100:.1f}%** or \
+    cumulative_weighted_portfolio_returns = portfolio_summary["cumulative_weighted_portfolio_returns"].iloc[-1]
+    
+    st.write(f"\nPortfolio Performance: Cumulative returns in time period are {cumulative_weighted_portfolio_returns*100:.0f}% with projected annual return **{expected_return*100:.1f}%** or \
                 **\\${initial_investment*expected_return:,.0f}** based on initial investment of \\${initial_investment:,.0f}")
     
     displayed_portfolio = portfolio_df.copy()
@@ -34,6 +36,9 @@ def display_selected_portfolio_table(portfolio_df, portfolio_summary):
     displayed_portfolio = displayed_portfolio.drop(displayed_portfolio.columns[0], axis=1)
     
     # Formatting
+    displayed_portfolio['Cumulative Return'] = (displayed_portfolio['Cumulative Return'] * 100).map("{:.0f}%".format)
+    displayed_portfolio = displayed_portfolio.rename(columns={"Cumulative Return (%)": "Cumulative Return"})
+    
     displayed_portfolio['Weight'] = (displayed_portfolio['Weight'] * 100).map("{:.1f}%".format)
     displayed_portfolio['Initial Allocation'] = displayed_portfolio['Initial Allocation'].map("${:,.0f}".format)
     displayed_portfolio['Expected Return (%)'] = (displayed_portfolio['Expected Return (%)'] * 100).map("{:.1f}%".format)

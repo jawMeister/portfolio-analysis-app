@@ -173,15 +173,24 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     
     stock_data.index = stock_data.index.tz_localize(None)
     dividend_data.index = dividend_data.index.tz_localize(None)
+    dividend_data = dividend_data.fillna(0)
+
+    logger.debug(f'dividend data keys:\n{dividend_data.keys()}')
+    logger.debug(f'dividend_data head:\n{dividend_data.head()}')
+    logger.debug(f'dividend_data tail:\n{dividend_data.tail()}')
+    logger.debug(f'dividend data describe:\n{dividend_data.describe()}')
     
     # Calculate daily returns
     daily_returns = stock_data.pct_change()
 
-    # Calculate daily dividend returns
+    stock_data = stock_data.reindex(dividend_data.index)
     daily_dividend_returns = dividend_data / stock_data.shift()
 
     # Calculate total returns
-    daily_total_returns = daily_returns + daily_dividend_returns
+    # TODO: something is not right with the daily dividend returns
+    # need to add this back in at some point
+    # daily_total_returns = daily_returns + daily_dividend_returns
+    daily_total_returns = daily_returns
 
     # TODO: Calculate portfolio returns and adjust for weights for any stock/asset that did not exist for the full time series
     # eg., BTC-USD or a stock that had an IPO in the middle of the time series
@@ -192,7 +201,6 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     # Download S&P 500 data for benchmarking
     sp500 = utils.get_sp500_daily_returns(start_date, end_date)
     # Align sp500 to daily_portfolio_returns
-    sp500 = sp500.reindex(daily_portfolio_returns.index).ffill()
 
     # Calculate relative returns
     portfolio_returns_relative_to_sp500 = daily_portfolio_returns - sp500
