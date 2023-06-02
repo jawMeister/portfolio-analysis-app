@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
     
 def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio):
     # Create a scatter plot for the efficient frontier
@@ -453,6 +453,7 @@ def plot_historical_and_relative_performance(df_returns_monthly, df_total_return
     
     return fig1, fig2, fig3
 
+# TODO: want this to be total returns vs just ticker returns, although dividend math not working atm
 def plot_historical_performance_by_ticker(df_dict):
     # total is returns + dividends
     df_total_monthly_returns_by_ticker = df_dict['df_returns_by_ticker'].resample('M').apply(lambda x: (1 + x).prod() - 1)

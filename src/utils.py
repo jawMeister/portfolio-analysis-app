@@ -5,7 +5,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 from pypfopt import expected_returns, risk_models, EfficientFrontier
 from empyrical import sharpe_ratio, sortino_ratio
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import streamlit as st
 import yfinance as yf
 from fredapi import Fred
@@ -16,32 +16,80 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import src.session as session
 
-@st.cache_data
+@st.cache_data(persist=True)
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
 
     logger.info(f"Getting dividend data for {tickers} from {start_date} to {end_date}")
     logger.debug("\n".join(traceback.format_stack()))   
     
+    # Get yesterday's date - streamlit cache is initializing the function with today's date
+    # which is resulting in errors in downloading stock data as dividends are not available
+    yesterday = datetime.now() - timedelta(days=1)
+    yesterday = yesterday.date()  # Convert datetime to date
+    
+    two_days_ago = datetime.now() - timedelta(days=2)
+    two_days_ago = two_days_ago.date()  # Convert datetime to date
+
+    # Convert start_date and end_date to date objects if they are string
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    logger.debug(f'start_date: {start_date}, end_date: {end_date}, yesterday: {yesterday}')
+    # If start_date or end_date are past yesterday, set them to yesterday
+    if start_date > yesterday:
+        logger.debug(f'start_date ({start_date}) is greater than yesterday ({yesterday}), setting start_date to two days ago')
+        start_date = two_days_ago
+    if end_date > yesterday:
+        logger.debug(f'end_date ({end_date}) is greater than yesterday ({yesterday}), setting end_date to yesterday')
+        end_date = yesterday
+
+    logger.debug(f'Pulling {tickers} stock history from start_date: {start_date} to end_date: {end_date}')
     for ticker in tickers:
         stock = yf.Ticker(ticker)
-        dividends = stock.history(start=start_date, end=end_date).Dividends
-        dividend_data[ticker] = dividends
+        stock_data = stock.history(start=start_date, end=end_date)
+        if 'Dividends' not in stock_data.columns:
+            dividend_data[ticker] = pd.Series(np.zeros(len(stock_data)), index=stock_data.index)
+        else:
+            dividend_data[ticker] = stock_data['Dividends']
 
     return pd.DataFrame(dividend_data)
 
-@st.cache_data
+@st.cache_data(persist=True)
 def get_stock_and_dividend_data(tickers, start_date, end_date):
-    if isinstance(start_date, (datetime, date)):
-        start_date = start_date.strftime('%Y-%m-%d')
-    if isinstance(end_date, (datetime, date)):
-        end_date = end_date.strftime('%Y-%m-%d')
-    if not isinstance(start_date, str) or not isinstance(end_date, str):
-        raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
+    # Get yesterday's date
+    yesterday = datetime.now() - timedelta(days=1)
+    yesterday = yesterday.date()  # Convert datetime to date
+    
+    two_days_ago = datetime.now() - timedelta(days=2)
+    two_days_ago = two_days_ago.date()  # Convert datetime to date
+
+    # Convert start_date and end_date to date objects if they are string or datetime
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    elif isinstance(start_date, datetime):
+        start_date = start_date.date()
+
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    elif isinstance(end_date, datetime):
+        end_date = end_date.date()
+    
+    logger.debug(f'start_date: {start_date}, end_date: {end_date}, yesterday: {yesterday}')
+    # If start_date or end_date are past yesterday, set them to yesterday
+    if start_date > yesterday:
+        logger.debug(f'start_date ({start_date}) is greater than yesterday ({yesterday}), setting start_date to two days ago')
+        start_date = two_days_ago
+    if end_date > yesterday:
+        logger.debug(f'end_date ({end_date}) is greater than yesterday ({yesterday}), setting end_date to yesterday')
+        end_date = yesterday
         
     logger.info(f"Getting stock and dividend data for {tickers} from {start_date} to {end_date}")
     logger.debug("\n".join(traceback.format_stack()[-2:]))    
@@ -53,7 +101,7 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
 
     return stock_data, dividend_data.fillna(0)
 
-@st.cache_data
+@st.cache_data(persist=True)
 def get_stock_data(tickers, start_date, end_date):
     if isinstance(start_date, (datetime, date)):
         start_date = start_date.strftime('%Y-%m-%d')
@@ -66,7 +114,6 @@ def get_stock_data(tickers, start_date, end_date):
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
-@st.cache_data
 def calculate_dividend_yield(stock_data, dividend_data):
     # Calculate the annual dividends and stock prices
     annual_dividends = dividend_data.resample('Y').sum()
@@ -98,12 +145,12 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
 
     return dividend_yield_ema.iloc[-1]
 
-@st.cache_data
+@st.cache_data(persist=True)
 def get_sp500_daily_returns(start_date, end_date):
     sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
     return sp500
 
-@st.cache_data
+@st.cache_data(persist=True)
 def get_ticker_data(ticker, start_date, end_date):
     logger.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
     daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
@@ -355,7 +402,7 @@ def calculate_covariance_matrix(stock_data):
 
 # TODO: build a custom cache for this as streamlit cache gets a lot of misses
 # due to volume of calls and this call is expensive - ~6s on a 5950x
-@st.cache_data
+@st.cache_data(persist=True)
 def calculate_efficient_portfolios(mu, S, risk_free_rate, num_portfolios=500):
     min_risk, max_sharpe_ratio = calculate_risk_extents(mu, S, risk_free_rate)
     
@@ -452,21 +499,25 @@ def calculate_monthly_returns(data):
 
     # Resample to the monthly level
     monthly_returns = daily_returns.resample('M').mean()
-    logger.debug(f"Monthly returns:\n{monthly_returns.head()}")
+    #logger.debug(f"Monthly returns:\n{monthly_returns.head()}")
 
     return monthly_returns
 
-@st.cache_data
+@st.cache_data(persist=True)
 def retrieve_historical_data(ticker, start_date, end_date):
+    logger.debug(f"Retrieving historical data for {ticker} from {start_date} to {end_date}")
     data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     return data
 
-@st.cache_data
+@st.cache_data(persist=True)
 def retrieve_risk_free_rate(start_date, end_date):
-    fred = Fred(api_key=session.get_fred_api_key())
-    logger.info(f"Retrieving risk-free rate from FRED from {start_date} to {end_date}")
-    risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date).rename("risk_free_rate").to_frame() / 100 
-    risk_free_rate_data = risk_free_rate_data.resample('D').ffill() / 252 # resample to daily and forward-fill missing data
+    risk_free_rate_data = None
+    if session.get_fred_api_key() is not None:
+        logger.debug(f"FRED API key found {session.get_fred_api_key()}")
+        fred = Fred(api_key=session.get_fred_api_key())
+        logger.info(f"Retrieving risk-free rate from FRED from {start_date} to {end_date}")
+        risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date).rename("risk_free_rate").to_frame() / 100 
+        risk_free_rate_data = risk_free_rate_data.resample('D').ffill() / 252 # resample to daily and forward-fill missing data
     return risk_free_rate_data
 
 def get_mean_returns_models():

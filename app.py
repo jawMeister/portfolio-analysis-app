@@ -5,6 +5,7 @@ from pypfopt import expected_returns, risk_models
 import warnings
 warnings.filterwarnings("ignore", message="Module \"zipline.assets\" not found")
 
+import traceback
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
@@ -28,26 +29,30 @@ def initalize_inputs():
     if 'app_initialized' not in st.session_state:
         st.session_state.app_initialized = False
         
-    if not st.session_state.app_initialized:
-        if "risk_free_rate" not in st.session_state:
-            st.session_state.risk_free_rate = 0.04
-            
-        if "start_date" not in st.session_state:
-            st.session_state.start_date = datetime(2014, 1, 1)
-            
-        if "end_date" not in st.session_state:
-            st.session_state.end_date = datetime.now() - timedelta(1)
-            
-        if "mean_returns_model" not in st.session_state:
-            st.session_state.mean_returns_model = "Historical Returns (Geometric Mean)"
-            
-        if "stock_data" not in st.session_state:
-            st.session_state.stock_data = None
-            
-        if "portfolio_tab_initialized" not in st.session_state:
-            st.session_state.portfolio_tab_initialized = False
+    if "risk_free_rate" not in st.session_state:
+        st.session_state.risk_free_rate = 0.04
         
-        st.session_state.app_initialized = True
+    if "start_date" not in st.session_state:
+        st.session_state.start_date = datetime(2014, 1, 1)
+        logger.debug(f"app init: start_date = {st.session_state.start_date}")
+        
+    if "end_date" not in st.session_state:
+        st.session_state.end_date = datetime.now() - timedelta(1)
+        logger.debug(f"app init: end_date = {st.session_state.end_date}")
+        
+    if "mean_returns_model" not in st.session_state:
+        st.session_state.mean_returns_model = "Historical Returns (Geometric Mean)"
+        
+    if "stock_data" not in st.session_state:
+        st.session_state.stock_data = None
+        
+    if "openai_portfolio_response" not in st.session_state:
+        st.session_state.openai_portfolio_response = None
+        
+    if "portfolio_tab_initialized" not in st.session_state:
+        st.session_state.portfolio_tab_initialized = False
+    
+    st.session_state.app_initialized = True
         
 # some of the tabs have settings dependent on the sidebar, so just have them each reinit on sidebar changes
 def reinitalize_tabs():
@@ -69,8 +74,9 @@ with st.sidebar:
     tickers = tickers.split(",")
     tickers = list(set(tickers))
     
-    st.date_input("Start date (for historical stock data)", key="start_date", on_change=reinitalize_tabs)
-    st.date_input("End date (for historical stock data)", key="end_date", on_change=reinitalize_tabs)
+    st.date_input("Start date (for historical stock data)", key="start_date", value=datetime(2014, 1, 1), on_change=reinitalize_tabs)
+    st.date_input("End date (for historical stock data)", key="end_date", value=(datetime.now() - timedelta(1)), on_change=reinitalize_tabs)
+    logger.debug(f"start_date input set to start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}, session start_date: {st.session_state.start_date}")
 
     # TODO: make this a different kind of input as clicking +/- a bunch of time causes many repaints
     rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f", on_change=reinitalize_tabs)
@@ -81,6 +87,7 @@ with st.sidebar:
 
     st.slider("Years to invest", min_value=1, max_value=50, step=1, value=20, key='years', on_change=reinitalize_tabs)
 
+    logger.debug(f"tickers: {tickers}, start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}")
     stock_data, dividend_data = utils.get_stock_and_dividend_data(tickers, st.session_state.start_date, st.session_state.end_date)
     st.session_state.stock_data = stock_data
     st.session_state.dividend_data = dividend_data
@@ -88,22 +95,29 @@ with st.sidebar:
     # radio button for risk model to leverage - put into session state?
     st.radio("Mean returns model", utils.get_mean_returns_models(), key="mean_returns_model", on_change=reinitalize_tabs)
     
-    #logging.debug(f"mean_returns_model: {st.session_state.mean_returns_model}, risk_free_rate: {st.session_state.risk_free_rate}")
-    mu = utils.calculate_mean_returns(st.session_state.stock_data, st.session_state.mean_returns_model, st.session_state.risk_free_rate)
-    S = utils.calculate_covariance_matrix(st.session_state.stock_data)
-    
-    min_risk, max_risk = utils.calculate_risk_extents(mu, S, st.session_state.risk_free_rate)
-    if "risk_level" not in st.session_state:
-        r0 = min_risk + ((max_risk - min_risk) /2)
-        st.session_state.risk_level = float(r0)
+    try:
+        #logging.debug(f"mean_returns_model: {st.session_state.mean_returns_model}, risk_free_rate: {st.session_state.risk_free_rate}")
+        mu = utils.calculate_mean_returns(st.session_state.stock_data, st.session_state.mean_returns_model, st.session_state.risk_free_rate)
+        S = utils.calculate_covariance_matrix(st.session_state.stock_data)
         
-    st.session_state.min_risk = min_risk
-    st.session_state.max_risk = max_risk
-    st.session_state.mu = mu
-    st.session_state.S = S
+        min_risk, max_risk = utils.calculate_risk_extents(mu, S, st.session_state.risk_free_rate)
+        if "risk_level" not in st.session_state:
+            r0 = min_risk + ((max_risk - min_risk) /2)
+            st.session_state.risk_level = float(r0)
+            
+        st.session_state.min_risk = min_risk
+        st.session_state.max_risk = max_risk
+        st.session_state.mu = mu
+        st.session_state.S = S
+            
+        st.slider("Risk Level", min_value=st.session_state.min_risk, max_value=st.session_state.max_risk, step=0.01, key="risk_level", format="%.2f", on_change=reinitalize_tabs)
+    except Exception as e:
+        logger.error(f"Error calculating mean returns and covariance matrix: {e}")
+        logger.error(traceback.format_exc())
+        logger.error(f"session state keys: {st.session_state.keys()}")
+        for k,v in st.session_state.items():
+            logger.error(f"{k}: {v}")
         
-    st.slider("Risk Level", min_value=st.session_state.min_risk, max_value=st.session_state.max_risk, step=0.01, key="risk_level", format="%.2f", on_change=reinitalize_tabs)
-    
 
     """
     Harry Markowitz, William Sharpe, and Merton Miller were jointly awarded the Nobel Memorial Prize in Economic Sciences in 1990 for their pioneering work 

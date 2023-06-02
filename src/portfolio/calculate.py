@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 def update_forecast_info(forecasted_stock_info, ticker, current_asset_price, dividend_yield, yearly_dividend, current_asset_shares, current_asset_value, year):
     forecasted_stock_info.loc[year, 'Year'] = year
@@ -205,11 +205,14 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     # Calculate relative returns
     portfolio_returns_relative_to_sp500 = daily_portfolio_returns - sp500
 
-    # Download risk-free rate data
+    # Download risk-free rate data - has value if FRED_API_KEY is set
     rf_rate = utils.retrieve_risk_free_rate(start_date, end_date)
-    daily_rf_rate = rf_rate.reindex(daily_portfolio_returns.index, method='ffill')['risk_free_rate']
-
-    portfolio_returns_relative_to_rf = daily_portfolio_returns - daily_rf_rate
+    if rf_rate is None:
+        daily_rf_rate = None
+        portfolio_returns_relative_to_rf = None
+    else:
+        daily_rf_rate = rf_rate.reindex(daily_portfolio_returns.index, method='ffill')['risk_free_rate']
+        portfolio_returns_relative_to_rf = daily_portfolio_returns - daily_rf_rate
     
     df_dict = {"df_returns_by_ticker": daily_returns,
                 "df_dividend_returns_by_ticker": daily_dividend_returns,

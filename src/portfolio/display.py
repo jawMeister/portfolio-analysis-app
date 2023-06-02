@@ -156,24 +156,25 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                 plot.plot_efficient_frontier_bar_chart(efficient_portfolios, portfolio_summary, optimal_portfolio)  
                 
             with col1:
+                # put up an input box if the api key not avaliable
                 if not session.check_for_openai_api_key():
                     label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
                     temp_key = st.text_input(label, value=session.get_openai_api_key())
                     if temp_key:
                         session.set_openai_api_key(temp_key)
-
-                if session.check_for_openai_api_key():
-                    if "openai_portfolio_response" not in st.session_state:
-                        st.session_state.openai_portfolio_response = None
-                        
-                    if st.button("Ask OpenAI to Interpret Results"):
-                        # Display a message indicating the application is waiting for the API to respond
-                        with st.spinner("Waiting for OpenAI API to respond..."):
-                            response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
-                            st.session_state.openai_portfolio_response = response
                             
-                    if st.session_state.openai_portfolio_response:
-                        st.write(st.session_state.openai_portfolio_response)
+                with st.form(key="Interpret Portfolio Results Form"):
+                    if st.form_submit_button("Ask OpenAI to Interpret Results"):
+                        # Display a message indicating the application is waiting for the API to respond
+                        if session.check_for_openai_api_key():
+                            with st.spinner("Waiting for OpenAI API to respond..."):
+                                response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
+                                st.session_state.openai_portfolio_response = response
+                        else:
+                            st.error("Please enter an OpenAI API key to interpret portfolio results")
+                                
+                if st.session_state.openai_portfolio_response:
+                    st.write(st.session_state.openai_portfolio_response)
 
                 st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
                 st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")

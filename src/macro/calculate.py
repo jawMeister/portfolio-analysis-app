@@ -54,6 +54,7 @@ def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
         macroeconomic_data.index = macroeconomic_data.index.tz_convert(None)
     
     # Resample stock returns and macroeconomic data separately
+    # taking the mean monthly return here, need to revisit this
     stock_returns_monthly = stock_returns.sort_index().resample('M').mean()
     
     # Sort by index
@@ -86,8 +87,6 @@ def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
     combined_data['cumulative_inflation'] = combined_data['US Inflation Rate'].cumsum()
 
     return combined_data
-
-
 
 
 def calculate_new_X(X, new_macro_vars):

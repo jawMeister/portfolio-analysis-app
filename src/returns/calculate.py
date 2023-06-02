@@ -69,16 +69,20 @@ def run_portfolio_simulations(portfolio_summary, n_simulations, distribution="T-
     start_time = time.time()
     n_cores = multiprocessing.cpu_count()
     #print(f"Number of cores: {n_cores}")
+    logger.info(f"running simulations on {n_cores} processor cores")
     
     results = []
     with stqdm(total=n_simulations) as pbar:
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             futures = []
-            for _ in range(n_simulations):
+            for i in range(n_simulations):
+                logger.debug(f"running simulation {i}")
+    
                 future = executor.submit(simulate_portfolio, portfolio_summary, distribution)
                 futures.append(future)
                 
             for future in concurrent.futures.as_completed(futures):
+                logger.debug(f"getting result from simulation")
                 result = future.result()
                 results.append(result)
                 pbar.update(1)

@@ -24,16 +24,35 @@ from config import OPENAI_API_KEY, FRED_API_KEY
 def initialize_session_state_input():
     if "returns_tab_initialized" not in st.session_state:
         st.session_state.returns_tab_initialized = False
-        
-    if not "returns_tab_intialized":
-        if "volatility_distribution" not in st.session_state:
-            st.session_state.volatility_distribution = "T-Distribution"
-        if "n_simulations" not in st.session_state:
-            st.session_state.n_simulations = 5000
-        if "simulation_mode" not in st.session_state:
-            st.session_state.simulation_mode = "Backtest and Forecast"
-            
-        st.session_state.returns_tab_initialized = True
+
+    if "volatility_distribution" not in st.session_state:
+        st.session_state.volatility_distribution = "T-Distribution"
+    if "n_simulations" not in st.session_state:
+        st.session_state.n_simulations = 5000
+    if "simulation_mode" not in st.session_state:
+        st.session_state.simulation_mode = "Forecast only"
+    if "final_backtest_results" not in st.session_state:
+        st.session_state.final_backtest_results = None
+    if "forecast_simulation_complete" not in st.session_state:
+        st.session_state.forecast_simulation_complete = False
+    if "backtest_simulation_complete" not in st.session_state:
+        st.session_state.backtest_simulation_complete = False
+    if "specific_years_to_plot" not in st.session_state:
+        st.session_state.specific_years_to_plot = None
+    if "sigma_levels_by_year" not in st.session_state:
+        st.session_state.sigma_levels_by_year = None
+    if "plots_by_year" not in st.session_state:
+        st.session_state.plots_by_year = None
+    if "returns_probability_by_year" not in st.session_state:
+        st.session_state.returns_probability_by_year = None
+    if "df_hist" not in st.session_state:
+        st.session_state.df_hist = None
+    if "df_scatter" not in st.session_state:
+        st.session_state.df_scatter = None
+    if "df_box" not in st.session_state:
+        st.session_state.df_box = None
+
+    st.session_state.returns_tab_initialized = True
 
 def display_portfolio_returns_analysis(portfolio_summary):
     simulation_results = None
@@ -72,151 +91,40 @@ def display_portfolio_returns_analysis(portfolio_summary):
                 if st.session_state.openai_returns_response:
                     st.write(st.session_state.openai_returns_response)
             
+    # if a backtest sim is in progress and forecast sim is complete, put the forecast sim into an expander
+    # otherwise, just display the forecast sim results
+    # if run_simulation:
+    #    if st.session_state.simulation_mode == "Forecast only" or st.session_state.simulation_mode == "Backtest and Forecast":
+    #        run_forecast_simulation(portfolio_summary)
+    #    if st.session_state.simulation_mode == "Backtest only" or st.session_state.simulation_mode == "Backtest and Forecast":
+    #        run_backtest_simulation(portfolio_summary)
+    
     with forecast_output_container:
         st.markdown("""---""")
         st.markdown('<p style="color:red;">Forecast Simulation Results</p>',unsafe_allow_html=True)
         if run_simulation:
             if st.session_state.simulation_mode == "Forecast only" or st.session_state.simulation_mode == "Backtest and Forecast":
-                simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
-                df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
-                specific_years_to_plot, sigma_levels_by_year, plots_by_year, returns_probability_by_year = create_simulation_probability_density_plots(simulation_results, portfolio_summary)
-                st.session_state.forecast_simulation_complete = True
-#                st.session_state.simulation_results = simulation_results
-                st.session_state.specific_years_to_plot = specific_years_to_plot
-                st.session_state.sigma_levels_by_year = sigma_levels_by_year
-                st.session_state.plots_by_year = plots_by_year
-                st.session_state.returns_probability_by_year = returns_probability_by_year
-                st.session_state.df_hist = df_hist
-                st.session_state.df_scatter = df_scatter
-                st.session_state.df_box = df_box
-                
+                run_forecast_simulation(portfolio_summary)
+
         if 'forecast_simulation_complete' in st.session_state and st.session_state.forecast_simulation_complete:
-            with st.container():
-                col1, col2, col3 = st.columns([1,1,1])
-                
-                with col1:
-                    st.plotly_chart(plot.plot_histogram_data(st.session_state.df_hist), use_container_width=True)
-                with col2:
-                    st.plotly_chart(plot.plot_scatter_data(st.session_state.df_scatter), use_container_width=True)
-                with col3:
-                    st.plotly_chart(plot.plot_box_data(st.session_state.df_box), use_container_width=True)
-
-            with st.container():
-                display_simulation_probability_density_plots(st.session_state.specific_years_to_plot, st.session_state.plots_by_year, st.session_state.returns_probability_by_year)
-
-
-    #with st.expander("NOT reality, assumes constant growth rate"):
-    #    display_asset_values(asset_values)
-    #    plots.plot_asset_values(asset_values)
+            display_forecast_results()
     
-    #TODO: code is a hot mess, refactor this
     with backtest_output_container:
         st.markdown("""---""")
         final_result_plot_placeholder = st.empty()
         st.markdown('<p style="color:red;">Backtest intermediate results, final result will be above</p>',unsafe_allow_html=True)
         
         if run_simulation:
-            if st.session_state.simulation_mode == "Backtest only" or st.session_state.simulation_mode == "Backtest and Forecast":                    
-                sim_portfolio_df, sim_portfolio_summary, actuals_data, simulation_data, actuals_start_date, actuals_end_date, years_to_simulate = display_setup_simulation_portfolio(portfolio_summary)
-                
-                with st.container():
-                    col1, col2, col3 = st.columns([1,1,1])
-                    with col1:
-                        display_selected_portfolio_table(sim_portfolio_df, sim_portfolio_summary)
-                    with col2:
-                        st.write("Simulation data")
-                        st.write(simulation_data)
-                    with col3:
-                        st.write("Actuals data")
-                        st.write(actuals_data)  
-    
-                # this simulates performance of every asset for years_to_simulate (eg, if 7 years, will have index 0-6)
-                simulation_results = calculate.run_portfolio_simulations(sim_portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
+            if st.session_state.simulation_mode == "Backtest only" or st.session_state.simulation_mode == "Backtest and Forecast":
+                run_backtest_simulation(portfolio_summary)                    
 
-                with st.container():
-                    col1, col2, col3 = st.columns([1,1,1])
-                    df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
-                    
-                    with col1:
-                        st.plotly_chart(plot.plot_histogram_data(df_hist))
-                    with col2:
-                        st.plotly_chart(plot.plot_scatter_data(df_scatter))
-                    with col3:
-                        st.plotly_chart(plot.plot_box_data(df_box))
+            with final_result_plot_placeholder.container():
+                display_backtest_results()
                 
-                # create the pdf plots for every year in the simulation so we can plot the sigma levels by year in combination with the actuals chart
-                specific_years_to_calculate = list(range(1, years_to_simulate+1)) # 1 to years_to_simulate inclusive, so year 1, 2, 3, 4, etc.
-                #print(f"specific_years_to_calculate: {specific_years_to_calculate}")
-                sigma_levels_by_year, plots_by_year, returns_probability_by_year = calculate.calculate_probability_density_for_returns(simulation_results, 
-                                                                                                                                        portfolio_summary["initial_investment"], 
-                                                                                                                                        portfolio_summary["yearly_contribution"], 
-                                                                                                                                        specific_years_to_calculate)
-                # similar to above forecast simulation, plot year 1, midpoint and end year
-                col1, col2, col3 = st.columns([1,1,1], gap="large")
-                columns = [col1, col2, col3]                 
-                # if 7 years to sim, this will be year 1, 3 and 6         
-                specific_years_to_plot = [1, years_to_simulate//2, years_to_simulate]          
-                for i, year in enumerate(specific_years_to_plot):
-                    #print(f"plotting col {i} for year: {year}")
-                    columns[i].plotly_chart(plots_by_year[year], use_container_width=True)
-                    columns[i].write(returns_probability_by_year[year])
-                
-                for ticker, weight in sim_portfolio_summary["weights"].items():
-                    if weight == 0:
-                        actuals_data.drop(ticker, axis=1, inplace=True)
-                        sim_portfolio_summary["dividend_data"].drop(ticker, axis=1, inplace=True)
+    #with st.expander("NOT reality, assumes constant growth rate"):
+    #    display_asset_values(asset_values)
+    #    plots.plot_asset_values(asset_values)
                         
-                # given the actual stock closing data, calculate what the portfolio value would have been
-                actuals_portfolio_values = calculate.calculate_portfolio_value(actuals_data, 
-                                                                                sim_portfolio_summary["weights"], 
-                                                                                sim_portfolio_summary["initial_investment"], 
-                                                                                sim_portfolio_summary["yearly_contribution"])
-                
-                with st.container():
-                    col1, col2, col3 = st.columns([1,1,1])
-                    with col1:
-                        st.write("Actuals weighted performance by day")
-                        st.write(actuals_portfolio_values)
-                        # table of mean value by month
-                        st.write("Actuals value by asset by month")
-                        st.write(actuals_portfolio_values.resample('M').mean())
-                        st.write("Actuals value by asset by year")
-                        st.write(actuals_portfolio_values.resample('Y').mean())
-                    with col2:
-                        mean_cumulative_returns_plot = calculate.calculate_mean_cumulative_returns(actuals_portfolio_values)
-                        st.plotly_chart(mean_cumulative_returns_plot, theme="streamlit", use_container_width=True)
-                        asset_performance_plot, annual_weighted_value_plot, annual_stacked_bar_plot = calculate.calculate_plots_for_portfolio_value(actuals_portfolio_values)
-                        st.plotly_chart(annual_stacked_bar_plot, theme="streamlit", use_container_width=True)
-                        st.plotly_chart(asset_performance_plot, theme="streamlit", use_container_width=True)
-                        st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
-
-
-                    with col3:
-                        plot_historical_performance(actuals_data, 
-                                                    sim_portfolio_summary["dividend_data"], 
-                                                    actuals_start_date, 
-                                                    actuals_end_date, 
-                                                    sim_portfolio_summary["weights"])
-                        
-
-                    final_results_plot = plot.plot_backtest_simulation_w_sigma_levels(sigma_levels_by_year, actuals_portfolio_values, actuals_start_date)
-                    
-                    with final_result_plot_placeholder.container():
-                        st.markdown('<p style="color:red;">Backtest Final Results: Comparing Forecast Model Probability Ranges with Actual Historical Results</p>',unsafe_allow_html=True)
-                        st.write("The charts below shows the backtest simulation of the selected portfolios (blue line) compared to the forecast model probability ranges (orange lines).")
-                        st.write("TODO: add absolute performance metrics to the charts below")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write("Backtest simulation of selected portfolio")
-                            st.plotly_chart(final_results_plot, theme="streamlit", use_container_width=True)
-                            st.write("Backtest simulation of min volatility portfolio (PLACEHOLDER)")
-                            st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
-                        with col2:
-                            st.write("Backtest simulation of optimal portfolio (PLACEHOLDER)")
-                            st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
-                            st.write("Backtest simulation of max sharpe portfolio (PLACEHOLDER)")
-                            st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
-
 def plot_historical_performance(actuals_data, dividend_data, start_date, end_date, weights):
     df_dict = calculate_portfolio_performance(actuals_data, 
                                                         dividend_data, 
@@ -322,3 +230,137 @@ def display_setup_simulation_portfolio(portfolio_summary):
             st.write(actuals_data)  
             
     return sim_portfolio_df, sim_portfolio_summary, actuals_data, simulation_data, actuals_start_date, actuals_end_date, years_to_simulate
+
+def display_forecast_results():
+    if 'forecast_simulation_complete' in st.session_state and st.session_state.forecast_simulation_complete:
+        with st.container():
+            col1, col2, col3 = st.columns([1,1,1])
+            
+            with col1:
+                st.plotly_chart(plot.plot_histogram_data(st.session_state.df_hist), use_container_width=True)
+            with col2:
+                st.plotly_chart(plot.plot_scatter_data(st.session_state.df_scatter), use_container_width=True)
+            with col3:
+                st.plotly_chart(plot.plot_box_data(st.session_state.df_box), use_container_width=True)
+
+        with st.container():
+            display_simulation_probability_density_plots(st.session_state.specific_years_to_plot, st.session_state.plots_by_year, st.session_state.returns_probability_by_year)
+        
+def display_backtest_results():
+    if 'backcast_simulation_complete' in st.session_state and st.session_state.backcast_simulation_complete:
+        st.markdown('<p style="color:red;">Backtest Final Results: Comparing Forecast Model Probability Ranges with Actual Historical Results</p>',unsafe_allow_html=True)
+        st.write("The charts below shows the backtest simulation of the selected portfolios (blue line) compared to the forecast model probability ranges (orange lines).")
+        st.write("TODO: add absolute performance metrics to the charts below")
+        col1, col2 = st.columns(2)
+        # TODO: simulate the min volatility, optimal and max sharpe portfolios
+        with col1:
+            st.plotly_chart(st.session_state.final_backtest_results, theme="streamlit", use_container_width=True)
+            #st.write("Backtest simulation of min volatility portfolio (PLACEHOLDER)")
+            #st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
+        #with col2:
+            #st.write("Backtest simulation of optimal portfolio (PLACEHOLDER)")
+            #st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
+            #st.write("Backtest simulation of max sharpe portfolio (PLACEHOLDER)")
+            #st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
+
+def run_forecast_simulation(portfolio_summary):
+    simulation_results = calculate.run_portfolio_simulations(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
+    df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
+    specific_years_to_plot, sigma_levels_by_year, plots_by_year, returns_probability_by_year = create_simulation_probability_density_plots(simulation_results, portfolio_summary)
+    st.session_state.forecast_simulation_complete = True
+#                st.session_state.simulation_results = simulation_results
+    st.session_state.specific_years_to_plot = specific_years_to_plot
+    st.session_state.sigma_levels_by_year = sigma_levels_by_year
+    st.session_state.plots_by_year = plots_by_year
+    st.session_state.returns_probability_by_year = returns_probability_by_year
+    st.session_state.df_hist = df_hist
+    st.session_state.df_scatter = df_scatter
+    st.session_state.df_box = df_box
+    
+# TODO: refactor this
+def run_backtest_simulation(portfolio_summary):
+    sim_portfolio_df, sim_portfolio_summary, actuals_data, simulation_data, actuals_start_date, actuals_end_date, years_to_simulate = display_setup_simulation_portfolio(portfolio_summary)
+    
+    with st.container():
+        col1, col2, col3 = st.columns([1,1,1])
+        with col1:
+            display_selected_portfolio_table(sim_portfolio_df, sim_portfolio_summary)
+        with col2:
+            st.write("Simulation data")
+            st.write(simulation_data)
+        with col3:
+            st.write("Actuals data")
+            st.write(actuals_data)  
+
+    # this simulates performance of every asset for years_to_simulate (eg, if 7 years, will have index 0-6)
+    simulation_results = calculate.run_portfolio_simulations(sim_portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
+
+    with st.container():
+        col1, col2, col3 = st.columns([1,1,1])
+        df_hist, df_scatter, df_box = calculate.summarize_simulation_results(simulation_results)
+        
+        with col1:
+            st.plotly_chart(plot.plot_histogram_data(df_hist))
+        with col2:
+            st.plotly_chart(plot.plot_scatter_data(df_scatter))
+        with col3:
+            st.plotly_chart(plot.plot_box_data(df_box))
+    
+    # create the pdf plots for every year in the simulation so we can plot the sigma levels by year in combination with the actuals chart
+    specific_years_to_calculate = list(range(1, years_to_simulate+1)) # 1 to years_to_simulate inclusive, so year 1, 2, 3, 4, etc.
+    #print(f"specific_years_to_calculate: {specific_years_to_calculate}")
+    sigma_levels_by_year, plots_by_year, returns_probability_by_year = calculate.calculate_probability_density_for_returns(simulation_results, 
+                                                                                                                            portfolio_summary["initial_investment"], 
+                                                                                                                            portfolio_summary["yearly_contribution"], 
+                                                                                                                            specific_years_to_calculate)
+    # similar to above forecast simulation, plot year 1, midpoint and end year
+    col1, col2, col3 = st.columns([1,1,1], gap="large")
+    columns = [col1, col2, col3]                 
+    # if 7 years to sim, this will be year 1, 3 and 6         
+    specific_years_to_plot = [1, years_to_simulate//2, years_to_simulate]          
+    for i, year in enumerate(specific_years_to_plot):
+        #print(f"plotting col {i} for year: {year}")
+        columns[i].plotly_chart(plots_by_year[year], use_container_width=True)
+        columns[i].write(returns_probability_by_year[year])
+    
+    for ticker, weight in sim_portfolio_summary["weights"].items():
+        if weight == 0:
+            actuals_data.drop(ticker, axis=1, inplace=True)
+            sim_portfolio_summary["dividend_data"].drop(ticker, axis=1, inplace=True)
+            
+    # given the actual stock closing data, calculate what the portfolio value would have been
+    actuals_portfolio_values = calculate.calculate_portfolio_value(actuals_data, 
+                                                                    sim_portfolio_summary["weights"], 
+                                                                    sim_portfolio_summary["initial_investment"], 
+                                                                    sim_portfolio_summary["yearly_contribution"])
+    
+    with st.container():
+        col1, col2, col3 = st.columns([1,1,1])
+        with col1:
+            st.write("Actuals weighted performance by day")
+            st.write(actuals_portfolio_values)
+            # table of mean value by month
+            st.write("Actuals value by asset by month")
+            st.write(actuals_portfolio_values.resample('M').mean())
+            st.write("Actuals value by asset by year")
+            st.write(actuals_portfolio_values.resample('Y').mean())
+        with col2:
+            mean_cumulative_returns_plot = calculate.calculate_mean_cumulative_returns(actuals_portfolio_values)
+            st.plotly_chart(mean_cumulative_returns_plot, theme="streamlit", use_container_width=True)
+            asset_performance_plot, annual_weighted_value_plot, annual_stacked_bar_plot = calculate.calculate_plots_for_portfolio_value(actuals_portfolio_values)
+            st.plotly_chart(annual_stacked_bar_plot, theme="streamlit", use_container_width=True)
+            st.plotly_chart(asset_performance_plot, theme="streamlit", use_container_width=True)
+            st.plotly_chart(annual_weighted_value_plot, theme="streamlit", use_container_width=True)
+
+
+        with col3:
+            plot_historical_performance(actuals_data, 
+                                        sim_portfolio_summary["dividend_data"], 
+                                        actuals_start_date, 
+                                        actuals_end_date, 
+                                        sim_portfolio_summary["weights"])
+            
+
+        final_results_plot = plot.plot_backtest_simulation_w_sigma_levels(sigma_levels_by_year, actuals_portfolio_values, actuals_start_date)
+        st.session_state.final_backtest_results = final_results_plot
+        st.session_state.backcast_simulation_complete = True

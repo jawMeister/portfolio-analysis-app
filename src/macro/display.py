@@ -39,7 +39,7 @@ def display_collect_future_macro_estimates(user_macro_input):
 
     with col2:
         if not session.check_for_fred_api_key():
-            label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) to download macro data"
+            label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) for macro analysis"
             temp_key = st.text_input(label, value=session.get_fred_api_key(), max_chars=32)
             if temp_key:
                 session.set_fred_api_key(temp_key)
@@ -54,35 +54,37 @@ def display_macro_analysis(portfolio_summary):
     with user_input_container:
         col1, col2, col3 = st.columns(3)
         with col1:
+
             user_macro_input = calculate.get_macro_factor_defaults()
             user_macro_input = display_collect_future_macro_estimates(user_macro_input)
             
-            # get historical macro data, unfiltered
-            historical_macro_data = calculate.get_historical_macro_data(portfolio_summary["start_date"], portfolio_summary["end_date"])
-            # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
-            combined_data = calculate.clean_and_combine_macro_data(portfolio_summary, historical_macro_data)
-            
-            # calculate the correlation between the macro factors and the portfolio returns (monthly basis)
-            # model data will have less data points than combined_data because we need to drop any rows with NaNs for the linear regression
-            # If the correlation is positive, it means that when the interest rate or inflation increases, our portfolio returns also tend to increase.
-            #
-            # Past performance is not indicative of future results, and this analysis assumes that the relationships between these variables and portfolio 
-            # returns will remain constant in the future, which may not be the case.
-            #
-            # The model also assumes a linear relationship between the predictors and the response variable. There could be a non-linear relationship 
-            # between them which cannot be captured by this model
-            
-            # hypothesis that these factors may impact cumulative performance
-            cumulative_macro_factors = ['cumulative_inflation', 'US M2 Money Supply', 'China M2 Money Supply']
-            y_cumulative = 'cumulative_returns'
-            cumulative_models, cumulative_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, cumulative_macro_factors, y_cumulative)
-            cumulative_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, cumulative_models)
+            if session.check_for_fred_api_key():
+                # get historical macro data, unfiltered
+                historical_macro_data = calculate.get_historical_macro_data(portfolio_summary["start_date"], portfolio_summary["end_date"])
+                # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
+                combined_data = calculate.clean_and_combine_macro_data(portfolio_summary, historical_macro_data)
+                
+                # calculate the correlation between the macro factors and the portfolio returns (monthly basis)
+                # model data will have less data points than combined_data because we need to drop any rows with NaNs for the linear regression
+                # If the correlation is positive, it means that when the interest rate or inflation increases, our portfolio returns also tend to increase.
+                #
+                # Past performance is not indicative of future results, and this analysis assumes that the relationships between these variables and portfolio 
+                # returns will remain constant in the future, which may not be the case.
+                #
+                # The model also assumes a linear relationship between the predictors and the response variable. There could be a non-linear relationship 
+                # between them which cannot be captured by this model
+                
+                # hypothesis that these factors may impact cumulative performance
+                cumulative_macro_factors = ['cumulative_inflation', 'US M2 Money Supply', 'China M2 Money Supply']
+                y_cumulative = 'cumulative_returns'
+                cumulative_models, cumulative_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, cumulative_macro_factors, y_cumulative)
+                cumulative_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, cumulative_models)
 
-            # hypothesis that these factors may impact month to month performance
-            rate_macro_factors = ['US Interest Rate', 'US Inflation Rate', 'US M2 Money Supply', 'China M2 Money Supply']
-            y_rate = 'portfolio_returns'
-            rate_models, rate_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, rate_macro_factors, y_rate)
-            rate_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, rate_models)
+                # hypothesis that these factors may impact month to month performance
+                rate_macro_factors = ['US Interest Rate', 'US Inflation Rate', 'US M2 Money Supply', 'China M2 Money Supply']
+                y_rate = 'portfolio_returns'
+                rate_models, rate_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, rate_macro_factors, y_rate)
+                rate_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, rate_models)
 
         with col2:
             display_ask_open_ai_about_macro(portfolio_summary)
@@ -94,47 +96,48 @@ def display_macro_analysis(portfolio_summary):
         st.markdown("""---""")
         col1, col2, col3 = st.columns(3, gap="large")
         
-        with col1:
-             # plot the unfiltered macro data
-            historical_macro_plots = plot.plot_historical_macro_data(historical_macro_data)
-            for historical_macro_plot in historical_macro_plots:
-                st.plotly_chart(historical_macro_plot, use_container_width=True)
+        if session.check_for_fred_api_key():
+            with col1:
+                # plot the unfiltered macro data
+                historical_macro_plots = plot.plot_historical_macro_data(historical_macro_data)
+                for historical_macro_plot in historical_macro_plots:
+                    st.plotly_chart(historical_macro_plot, use_container_width=True)
+                
+                absolute_portfolio_plot, cumulative_portfolio_plot = plot.plot_historical_portfolio_performance(combined_data)
+                st.plotly_chart(absolute_portfolio_plot, use_container_width=True)
+                st.plotly_chart(cumulative_portfolio_plot, use_container_width=True)
+                st.write(combined_data)
+                
+            with col2:
+                # plot the combined macro and portfolio data
+                macro_vs_portfolio_returns_plots = plot.plot_macro_vs_portfolio_performance(portfolio_summary, combined_data)
             
-            absolute_portfolio_plot, cumulative_portfolio_plot = plot.plot_historical_portfolio_performance(combined_data)
-            st.plotly_chart(absolute_portfolio_plot, use_container_width=True)
-            st.plotly_chart(cumulative_portfolio_plot, use_container_width=True)
-            st.write(combined_data)
+                for macro_vs_portfolio_returns_plot in macro_vs_portfolio_returns_plots:
+                    st.plotly_chart(macro_vs_portfolio_returns_plot, use_container_width=True)
             
-        with col2:
-            # plot the combined macro and portfolio data
-            macro_vs_portfolio_returns_plots = plot.plot_macro_vs_portfolio_performance(portfolio_summary, combined_data)
-        
-            for macro_vs_portfolio_returns_plot in macro_vs_portfolio_returns_plots:
-                st.plotly_chart(macro_vs_portfolio_returns_plot, use_container_width=True)
-        
-        with col3:
-            # plot the linear regression model
-            for factor, model in cumulative_models.items():
-                st.write(display_regression_formula(model, factor, "Cumulative Returns"))
-                prediction = None
-                if factor in cumulative_performance_predictions:
-                    prediction = {factor: user_macro_input[factor], 'prediction': cumulative_performance_predictions[factor][0]}
-                st.plotly_chart(plot.plot_linear_regression_v_single_model(model, cumulative_model_data, factor, "cumulative_returns", prediction=prediction))
+            with col3:
+                # plot the linear regression model
+                for factor, model in cumulative_models.items():
+                    st.write(display_regression_formula(model, factor, "Cumulative Returns"))
+                    prediction = None
+                    if factor in cumulative_performance_predictions:
+                        prediction = {factor: user_macro_input[factor], 'prediction': cumulative_performance_predictions[factor][0]}
+                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, cumulative_model_data, factor, "cumulative_returns", prediction=prediction))
 
-                
-            for factor, model in rate_models.items():
-                # ... (plot the regression here)
-                st.write(display_regression_formula(model, factor, "Monthly Returns"))
-                prediction = None
-                if factor in rate_performance_predictions:
-                    prediction = {factor: user_macro_input[factor], 'prediction': rate_performance_predictions[factor][0]}
-                st.plotly_chart(plot.plot_linear_regression_v_single_model(model, rate_model_data, factor, "portfolio_returns", prediction=prediction))
-                
-                                
-            #linear_regression_plots = plot.plot_linear_regression(linear_macro_model, model_data, X, macro_estimate_df, predicted_change_in_returns)
-            #for linear_regression_plot in linear_regression_plots:
-            #    st.plotly_chart(linear_regression_plot, use_container_width=True)
-                
+                    
+                for factor, model in rate_models.items():
+                    # ... (plot the regression here)
+                    st.write(display_regression_formula(model, factor, "Monthly Returns"))
+                    prediction = None
+                    if factor in rate_performance_predictions:
+                        prediction = {factor: user_macro_input[factor], 'prediction': rate_performance_predictions[factor][0]}
+                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, rate_model_data, factor, "portfolio_returns", prediction=prediction))
+                    
+                                    
+                #linear_regression_plots = plot.plot_linear_regression(linear_macro_model, model_data, X, macro_estimate_df, predicted_change_in_returns)
+                #for linear_regression_plot in linear_regression_plots:
+                #    st.plotly_chart(linear_regression_plot, use_container_width=True)
+            
 
 def display_ask_open_ai_about_macro(portfolio_summary):
     st.write("Deciding which macroeconomic factors to explore depends on the nature of your portfolio and your investment horizon. For a long-term equity portfolio, interest rates, inflation, and GDP growth could be more critical. For a short-term or bond portfolio, interest rates and liquidity might be more important.")

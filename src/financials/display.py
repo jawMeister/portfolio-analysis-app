@@ -132,13 +132,19 @@ def display_financials_analysis(portfolio_summary):
             
     with output_container:
         if submitted:
-            st.session_state['ticker_list'] = tickers
-            with st.spinner("Retrieving financial statements and analyzing..."):
-                financial_summary_and_analysis_by_ticker = calculate.retrieve_financial_summary_and_analysis_for_tickers(st.session_state['ticker_list'], 
-                                                                                                                        st.session_state['period'], 
-                                                                                                                        st.session_state['n_periods'], 
-                                                                                                                        st.session_state['statement_types'])
-            st.session_state['financial_summary_and_analysis_by_ticker'] = financial_summary_and_analysis_by_ticker
+            if not session.check_for_fmp_api_key():
+                st.error("Please enter an FMP API key to retrieve financial statements.")
+            else:
+                if not session.check_for_openai_api_key():
+                    st.write("Enter an OpenAI API key on the first page to enable financial statement analysis.")
+                    
+                st.session_state['ticker_list'] = tickers
+                with st.spinner("Retrieving financial statements and analyzing..."):
+                    financial_summary_and_analysis_by_ticker = calculate.retrieve_financial_summary_and_analysis_for_tickers(st.session_state['ticker_list'], 
+                                                                                                                            st.session_state['period'], 
+                                                                                                                            st.session_state['n_periods'], 
+                                                                                                                            st.session_state['statement_types'])
+                st.session_state['financial_summary_and_analysis_by_ticker'] = financial_summary_and_analysis_by_ticker
             
         if 'financial_summary_and_analysis_by_ticker' in st.session_state and st.session_state['financial_summary_and_analysis_by_ticker']:
             display_financials_analysis_for_tickers(st.session_state['ticker_list'])
