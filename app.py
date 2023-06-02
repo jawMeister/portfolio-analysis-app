@@ -74,8 +74,8 @@ with st.sidebar:
     tickers = tickers.split(",")
     tickers = list(set(tickers))
     
-    st.date_input("Start date (for historical stock data)", key="start_date", value=datetime(2014, 1, 1), on_change=reinitalize_tabs)
-    st.date_input("End date (for historical stock data)", key="end_date", value=(datetime.now() - timedelta(1)), on_change=reinitalize_tabs)
+    st.date_input("Start date (for historical stock data)", key="start_date", on_change=reinitalize_tabs)
+    st.date_input("End date (for historical stock data)", key="end_date", on_change=reinitalize_tabs)
     logger.debug(f"start_date input set to start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}, session start_date: {st.session_state.start_date}")
 
     # TODO: make this a different kind of input as clicking +/- a bunch of time causes many repaints

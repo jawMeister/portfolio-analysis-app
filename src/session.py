@@ -11,6 +11,7 @@ logger.setLevel(logging.DEBUG)
 
 from config import OPENAI_API_KEY, FRED_API_KEY, FMP_API_KEY, mask_key
 
+#TODO: refactor this to use the os.environ.get() method instead of the config.py file?
 def check_for_openai_api_key():    
     # Initialize the API key and the flag in the session state if they are not already present
     if 'openai_api_key' not in st.session_state:
