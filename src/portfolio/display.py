@@ -157,6 +157,7 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                 
             with col1:
                 # put up an input box if the api key not avaliable
+                # TODO: what if they enter a bad key?
                 if not session.check_for_openai_api_key():
                     label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
                     temp_key = st.text_input(label, value=session.get_openai_api_key())

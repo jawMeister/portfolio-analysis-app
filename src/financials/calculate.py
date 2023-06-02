@@ -135,6 +135,7 @@ def create_financial_summary_df(financial_statements, ticker, n_periods, period)
 def get_financial_statement(statement_type, ticker, period, n_periods):
     if session.check_for_fmp_api_key():
         fmp_api_key = session.get_fmp_api_key()
+        logger.debug(f"Found FMP API key: {fmp_api_key}")
         base_url = "https://financialmodelingprep.com/api/v3"
 
         logger.info(f"Fetching FMP data: {statement_type} for {ticker} from {base_url} with {n_periods} {period} periods")
@@ -158,6 +159,10 @@ def get_financial_statement(statement_type, ticker, period, n_periods):
 
         if response.status_code == 200:
             data = response.json()
+            logger.debug(f"Query returned {data}")
+            #TODO: response code can apparenlty be 200 even if there is an error, so need to check for error in response field 'Error Message'
+            if 'Error Message' in data:
+                raise Exception(f"Query failed to run by returning code of {response.status_code}. {response.json()}")
             return data
         else:
             raise Exception(f"Query failed to run by returning code of {response.status_code}. {response.json()}")

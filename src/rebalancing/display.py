@@ -20,49 +20,48 @@ def initialize_inputs():
     if 'rebalancing_tab_initialized' not in st.session_state:
         st.session_state.rebalancing_tab_initialized = False
         
-    if not st.session_state.rebalancing_tab_initialized:
-        if "rebalance_time_span" not in st.session_state:
-            time_span = st.session_state.end_date - st.session_state.start_date
-            # number of months between start and end date from the sidebar
-            time_span = time_span / timedelta(weeks=4)
-            st.session_state.rebalance_time_span = time_span
-            logger.debug(f"Time span: {time_span}")
-            
-        if 'rebalancing_period' not in st.session_state:
-            st.session_state.rebalancing_period = max(int(time_span / 10), 1) 
-            
-        if 'trailing_period' not in st.session_state:
-            st.session_state.trailing_period = max(int(time_span / 5), 1) 
-            
-        if 'original_v_rebalanced_plot' not in st.session_state:
-            st.session_state.original_v_rebalanced_plot = None
-            
-        if 'rebalanced_portfolios_plot' not in st.session_state:
-            st.session_state.rebalanced_portfolios_plot = None
-            
-        if 'rebalanced_ticker_weights_plot' not in st.session_state:
-            st.session_state.ticker_weights_plot = None
-            
-        if 'rebalance_portfolio_type' not in st.session_state:
-            st.session_state.rebalance_type = 'Selected Portfolio'
+    if "rebalance_time_span" not in st.session_state:
+        time_span = st.session_state.end_date - st.session_state.start_date
+        # number of months between start and end date from the sidebar
+        time_span = time_span / timedelta(weeks=4)
+        st.session_state.rebalance_time_span = time_span
+        logger.debug(f"Time span: {time_span}")
         
-        logger.debug(f"init: rebalance portfolio type in session: {'rebalance_returns_model_type' in st.session_state}")
-        if 'rebalance_returns_model_type' not in st.session_state:
-            st.session_state.rebalance_returns_model_type = st.session_state.mean_returns_model
-            logger.debug(f"not in session, set to: rebalance returns model type: {st.session_state.rebalance_returns_model_type}")
-        logger.debug(f"init: rebalance returns model type: {st.session_state.rebalance_returns_model_type}")
+    if 'rebalancing_period' not in st.session_state:
+        st.session_state.rebalancing_period = max(int(st.session_state.rebalance_time_span / 10), 1) 
         
-        if 'rebalance_risk_level' not in st.session_state:
-            st.session_state.rebalance_risk_level = st.session_state.risk_level
-            
-        if 'rebalance_min_risk' not in st.session_state:
-            st.session_state.rebalance_min_risk = st.session_state.min_risk
-            
-        if 'rebalance_max_risk' not in st.session_state:
-            st.session_state.rebalance_max_risk = st.session_state.max_risk
+    if 'trailing_period' not in st.session_state:
+        st.session_state.trailing_period = max(int(st.session_state.rebalance_time_span / 5), 1) 
         
-        st.session_state.rebalancing_tab_initialized = True
-        logger.debug("Inputs initialized")
+    if 'original_v_rebalanced_plot' not in st.session_state:
+        st.session_state.original_v_rebalanced_plot = None
+        
+    if 'rebalanced_portfolios_plot' not in st.session_state:
+        st.session_state.rebalanced_portfolios_plot = None
+        
+    if 'rebalanced_ticker_weights_plot' not in st.session_state:
+        st.session_state.ticker_weights_plot = None
+        
+    if 'rebalance_portfolio_type' not in st.session_state:
+        st.session_state.rebalance_type = 'Selected Portfolio'
+    
+    logger.debug(f"init: rebalance portfolio type in session: {'rebalance_returns_model_type' in st.session_state}")
+    if 'rebalance_returns_model_type' not in st.session_state:
+        st.session_state.rebalance_returns_model_type = st.session_state.mean_returns_model
+        logger.debug(f"not in session, set to: rebalance returns model type: {st.session_state.rebalance_returns_model_type}")
+    logger.debug(f"init: rebalance returns model type: {st.session_state.rebalance_returns_model_type}")
+    
+    if 'rebalance_risk_level' not in st.session_state:
+        st.session_state.rebalance_risk_level = st.session_state.risk_level
+        
+    if 'rebalance_min_risk' not in st.session_state:
+        st.session_state.rebalance_min_risk = st.session_state.min_risk
+        
+    if 'rebalance_max_risk' not in st.session_state:
+        st.session_state.rebalance_max_risk = st.session_state.max_risk
+    
+    st.session_state.rebalancing_tab_initialized = True
+    logger.debug("Inputs initialized")
         
 def recalculate_risk_extents():
     logger.debug("Recalculating risk extents")

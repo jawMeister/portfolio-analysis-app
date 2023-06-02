@@ -110,13 +110,7 @@ def display_financials_analysis(portfolio_summary):
                             
                     st.radio("Select period:", ["Annual", "Quarterly"], key="period")
                     st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
-                    
-                    if not session.check_for_fmp_api_key():
-                        label = "Enter [FMP API Key](https://financialmodelingprep.com/developer/docs/) to retrieve financial statements"
-                        temp_key = st.text_input(label, value=session.get_fmp_api_key())
-                        if temp_key:
-                            session.set_fmp_api_key(temp_key)
-                        
+                
                 with subcol2:
                     tickers = st.text_area("Enter ticker symbols (comma separated)", key="tickers_for_financials")
                     tickers = tickers.split(",")
@@ -124,6 +118,13 @@ def display_financials_analysis(portfolio_summary):
                     
                     submitted = st.form_submit_button("Retrieve & Analyze Income Statement, Balance Sheet and Cash Flow Statements")
             st.caption("OpenAI token limit currently limiting to 4 periods of financial statements. Financial statement data provided by [Financial Modeling Prep](https://financialmodelingprep.com/developer/docs/).")
+
+            if not session.check_for_fmp_api_key():
+                label = "Enter [FMP API Key](https://financialmodelingprep.com/developer/docs/) to retrieve financial statements"
+                temp_key = st.text_input(label, value=session.get_fmp_api_key())
+                if temp_key:
+                    session.set_fmp_api_key(temp_key)
+                    
         with col2:
             display_trend_revenue_description()
             display_trend_assets_and_liabilities_description()
