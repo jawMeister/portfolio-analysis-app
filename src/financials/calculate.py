@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-import src.session as session
+import config as config
 import src.financials.interpret as interpret
 
 def create_financial_summary_dict(financial_statements, ticker, period, n_periods):
@@ -133,8 +133,8 @@ def create_financial_summary_df(financial_statements, ticker, n_periods, period)
 
 @st.cache_data
 def get_financial_statement(statement_type, ticker, period, n_periods):
-    if session.check_for_fmp_api_key():
-        fmp_api_key = session.get_fmp_api_key()
+    if config.check_for_api_key('fmp'):
+        fmp_api_key = config.get_api_key('fmp')
         logger.debug(f"Found FMP API key: {fmp_api_key}")
         base_url = "https://financialmodelingprep.com/api/v3"
 
@@ -221,7 +221,7 @@ def retrieve_financial_statements(ticker, period, n_periods, statement_types):
 
 def analyze_financial_statements(financial_summary, ticker, period, n_periods):
     escaped_text = None
-    if session.check_for_openai_api_key():            
+    if config.check_for_api_key('openai'):            
         with st.spinner(f"Waiting for OpenAI API to Analyze Financial Statements for {ticker}..."):
             response = interpret.openai_analyze_financial_statements_dict(financial_summary, ticker, period, n_periods)
             logger.debug(f"Analysis for {ticker}:\n{response}")

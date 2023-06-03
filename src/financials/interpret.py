@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-import src.session as session
+import config as config
 
     
 def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period, n_periods):
@@ -23,8 +23,8 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
         
     logger.debug(f"financial_statement_data: {financial_statement_data}, len: {len(financial_statement_data)}")
                         
-    if session.check_for_openai_api_key():
-        openai.api_key = session.get_openai_api_key()
+    if config.check_for_api_key('openai'):
+        openai.api_key = config.get_api_key('openai')
         
         analyze = f"You are an investor, analyze the financial statement data for {ticker} to " + \
                     "summarize business results and trends in paragraph form per type of financial statement provided. "

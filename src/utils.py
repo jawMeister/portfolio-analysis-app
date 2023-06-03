@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-import src.session as session
+import config as config
 
 @st.cache_data(persist=True)
 def get_dividend_data(tickers, start_date, end_date):
@@ -512,9 +512,9 @@ def retrieve_historical_data(ticker, start_date, end_date):
 @st.cache_data(persist=True)
 def retrieve_risk_free_rate(start_date, end_date):
     risk_free_rate_data = None
-    if session.get_fred_api_key() is not None:
-        logger.debug(f"FRED API key found {session.get_fred_api_key()}")
-        fred = Fred(api_key=session.get_fred_api_key())
+    if config.get_api_key('fred') is not None:
+        logger.debug(f"FRED API key found {config.get_api_key('fred')}")
+        fred = Fred(api_key=config.get_api_key('fred'))
         logger.info(f"Retrieving risk-free rate from FRED from {start_date} to {end_date}")
         risk_free_rate_data = fred.get_series('TB3MS', start_date, end_date).rename("risk_free_rate").to_frame() / 100 
         risk_free_rate_data = risk_free_rate_data.resample('D').ffill() / 252 # resample to daily and forward-fill missing data

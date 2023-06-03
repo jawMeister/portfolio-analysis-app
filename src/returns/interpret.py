@@ -1,12 +1,12 @@
 import streamlit as st
 import openai
 
-import src.session as session
+import config as config
 
 def openai_interpret_montecarlo_simulation(portfolio_summary, number_of_simulations, volatility_distribution):
     
-    if session.check_for_openai_api_key():
-        openai.api_key = session.get_openai_api_key()
+    if config.check_for_api_key('openai'):
+        openai.api_key = config.get_api_key('openai')
         
         tickers = []
         for ticker in portfolio_summary["stock_data"].columns:

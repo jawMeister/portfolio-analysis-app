@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 
 # refactored project in a structure and had issues with relative imports, so using absolute imports
 import src.utils as utils
-import src.session as session
+import config as config
 
 import src.portfolio.plot as plot
 import src.portfolio.interpret as interpret
@@ -158,16 +158,16 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
             with col1:
                 # put up an input box if the api key not avaliable
                 # TODO: what if they enter a bad key?
-                if not session.check_for_openai_api_key():
+                if not config.check_for_api_key('openai'):
                     label = "Enter [OpenAI API Key](https://platform.openai.com/account/api-keys) to interpret portfolio results"
-                    temp_key = st.text_input(label, value=session.get_openai_api_key())
+                    temp_key = st.text_input(label, value=config.get_api_key('openai'))
                     if temp_key:
-                        session.set_openai_api_key(temp_key)
+                        config.set_api_key('openai', temp_key)
                             
                 with st.form(key="Interpret Portfolio Results Form"):
                     if st.form_submit_button("Ask OpenAI to Interpret Results"):
                         # Display a message indicating the application is waiting for the API to respond
-                        if session.check_for_openai_api_key():
+                        if config.check_for_api_key('openai'):
                             with st.spinner("Waiting for OpenAI API to respond..."):
                                 response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
                                 st.session_state.openai_portfolio_response = response

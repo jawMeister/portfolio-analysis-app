@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 import src.utils as utils
-import src.session as session
+import config as config
 
 import src.returns.calculate as calculate
 import src.returns.plot as plot
@@ -18,8 +18,6 @@ import src.returns.interpret as interpret
 from src.portfolio.plot import plot_historical_performance_by_ticker, plot_portfolio_performance_by_benchmark, plot_month_to_month_portfolio_performance, plot_efficient_frontier
 from src.portfolio.calculate import calculate_portfolio_performance
 from src.portfolio.display import display_selected_portfolio_table
-
-from config import OPENAI_API_KEY, FRED_API_KEY
 
 def initialize_session_state_input():
     if "returns_tab_initialized" not in st.session_state:
@@ -80,7 +78,7 @@ def display_portfolio_returns_analysis(portfolio_summary):
             st.caption("The Monte Carlo simulation leverages historical volatility to randomize future returns. Backtest results will not be saved in session.")
             
         with col2:
-            if session.check_for_openai_api_key():
+            if config.check_for_api_key('openai'):
                 if "openai_returns_response" not in st.session_state:
                     st.session_state.openai_returns_response = None
                     

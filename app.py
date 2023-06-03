@@ -21,6 +21,9 @@ from src.optimization import display as optimization
 from src.rebalancing import display as rebalancing
 from src.financials import display as financials
 from src.technical import display as technical
+from src.forecasting import display as forecasting
+from src.news import display as news
+
 
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
@@ -142,8 +145,9 @@ with st.sidebar:
 if tickers and st.session_state.end_date > st.session_state.start_date:
     logger.debug(f"tickers: {tickers}, initial_investment: {st.session_state.initial_investment}, years: {st.session_state.years}, start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}")
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", 
-                                            "Rebalancing Analysis", "Portfolio Optimization","Financials Analysis","Technical Analysis"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["Portfolio Analysis","Returns Analysis", "Macro Economic Analysis", 
+                                                        "Rebalancing Analysis", "Portfolio Optimization","Financials Analysis",
+                                                        "Technical Analysis","Forecasting Analysis","News Analysis"])
     
     # Calculate portfolio statistics
     portfolio_df, portfolio_summary = \
@@ -172,3 +176,9 @@ if tickers and st.session_state.end_date > st.session_state.start_date:
         
     with tab7:
         technical.display_technical_analysis(portfolio_summary)
+        
+    with tab8:
+        forecasting.display_forecasting_analysis(portfolio_summary)
+        
+    with tab9:
+        news.display_news_analysis(portfolio_summary)

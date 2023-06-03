@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-import src.session as session
+import config as config
 import src.financials.interpret as interpret
 import src.financials.calculate as calculate
 import src.financials.plot as plot
@@ -18,37 +18,36 @@ def initialize_input_variables(portfolio_summary):
     if 'financials_tab_initialized' not in st.session_state:
         st.session_state.financials_tab_initialized = False
         
-    if not st.session_state.financials_tab_initialized:
-        if 'statement_types' not in st.session_state:
-            st.session_state['statement_types'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
+    if 'statement_types' not in st.session_state:
+        st.session_state['statement_types'] = ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']
+    
+    if 'period' not in st.session_state:
+        st.session_state['period'] = 'Annual'
+    
+    # TODO: periods max based on token limit going to open ai for financials processing
+    # as of 5/28/2023, 4 periods is the max as it is 1,000 tokens
+    # gets initialized in the radio button below
+    #if 'n_periods' not in st.session_state:
+    #    st.session_state['n_periods'] = 4
+    if 'financial_summary_and_analysis_by_ticker' not in st.session_state:
+        st.session_state['financial_summary_and_analysis_by_ticker'] = None
         
-        if 'period' not in st.session_state:
-            st.session_state['period'] = 'Annual'
+    if 'tickers_for_financials' not in st.session_state:
+        tickers_default = ""
+        for i, ticker in enumerate(portfolio_summary['tickers']):
+            # strip out the cryptos and anything without a weight
+            if '-USD' not in ticker and portfolio_summary['weights'][ticker] > 0:
+                tickers_default += f"{ticker},"
+                
+        logger.debug(f"tickers_default: {tickers_default}")
+        # remove the last comma
+        tickers_default = tickers_default[:-1]
+                            
+        st.session_state['tickers_for_financials'] = tickers_default
+        logger.debug(f"Setting tickers_for_financials to {st.session_state['tickers_for_financials']}")
         
-        # TODO: periods max based on token limit going to open ai for financials processing
-        # as of 5/28/2023, 4 periods is the max as it is 1,000 tokens
-        # gets initialized in the radio button below
-        #if 'n_periods' not in st.session_state:
-        #    st.session_state['n_periods'] = 4
-        if 'financial_summary_and_analysis_by_ticker' not in st.session_state:
-            st.session_state['financial_summary_and_analysis_by_ticker'] = None
-            
-        if 'tickers_for_financials' not in st.session_state:
-            tickers_default = ""
-            for i, ticker in enumerate(portfolio_summary['tickers']):
-                # strip out the cryptos and anything without a weight
-                if '-USD' not in ticker and portfolio_summary['weights'][ticker] > 0:
-                    tickers_default += f"{ticker},"
-                    
-            logger.debug(f"tickers_default: {tickers_default}")
-            # remove the last comma
-            tickers_default = tickers_default[:-1]
-                                
-            st.session_state['tickers_for_financials'] = tickers_default
-            logger.debug(f"Setting tickers_for_financials to {st.session_state['tickers_for_financials']}")
-            
-        st.session_state.financials_tab_initialized = True
-        
+    st.session_state.financials_tab_initialized = True
+    
 
 def display_financials_analysis_for_tickers(tickers):
     financial_summaries = st.session_state['financial_summary_and_analysis_by_ticker']
@@ -119,11 +118,11 @@ def display_financials_analysis(portfolio_summary):
                     submitted = st.form_submit_button("Retrieve & Analyze Income Statement, Balance Sheet and Cash Flow Statements")
             st.caption("OpenAI token limit currently limiting to 4 periods of financial statements. Financial statement data provided by [Financial Modeling Prep](https://financialmodelingprep.com/developer/docs/).")
 
-            if not session.check_for_fmp_api_key():
+            if not config.check_for_api_key('fmp'):
                 label = "Enter [FMP API Key](https://financialmodelingprep.com/developer/docs/) to retrieve financial statements"
-                temp_key = st.text_input(label, value=session.get_fmp_api_key())
+                temp_key = st.text_input(label, value=config.get_api_key('fmp'))
                 if temp_key:
-                    session.set_fmp_api_key(temp_key)
+                    config.set_api_key('fmp', temp_key)
                     
         with col2:
             display_trend_revenue_description()
@@ -133,10 +132,10 @@ def display_financials_analysis(portfolio_summary):
             
     with output_container:
         if submitted:
-            if not session.check_for_fmp_api_key():
+            if not config.check_for_api_key('fmp'):
                 st.error("Please enter an FMP API key to retrieve financial statements.")
             else:
-                if not session.check_for_openai_api_key():
+                if not config.check_for_api_key('openai'):
                     st.write("Enter an OpenAI API key on the first page to enable financial statement analysis.")
                     
                 st.session_state['ticker_list'] = tickers

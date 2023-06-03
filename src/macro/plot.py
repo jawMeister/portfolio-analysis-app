@@ -75,7 +75,7 @@ def plot_linear_regression_v_single_model(model, model_data, factor, y, predicti
     # Display the plot
     return fig
 
-def plot_macro_vs_portfolio_performance(portfolio_summary, combined_data):
+def plot_macro_vs_portfolio_performance(combined_data):
     logger.debug(f"combined data monthly --- First date: {combined_data.index.min()}, Last date: {combined_data.index.max()}")
     
     plots = []
@@ -90,7 +90,7 @@ def plot_macro_vs_portfolio_performance(portfolio_summary, combined_data):
 
         # Add portfolio return trace
         fig.add_trace(
-            go.Scatter(x=combined_data.index, y=combined_data['portfolio_returns'], mode='lines', name='Portfolio Returns'),
+            go.Scatter(x=combined_data.index, y=combined_data['weighted_portfolio_returns_monthly'], mode='lines', name='Portfolio Monthly Returns'),
             secondary_y=False,
         )
 
@@ -102,11 +102,11 @@ def plot_macro_vs_portfolio_performance(portfolio_summary, combined_data):
 
         # Set axis titles
         #fig.update_xaxes(title_text="Date")
-        fig.update_yaxes(title_text="Portfolio Returns (MoM % Change)", secondary_y=False)
+        fig.update_yaxes(title_text="Returns %", secondary_y=False)
         fig.update_yaxes(title_text=factor, secondary_y=True)
 
         # Set title
-        fig.update_layout(title_text=f'Portfolio Returns vs {factor}')
+        fig.update_layout(title_text=f'Weighted Portfolio Monthly Returns vs {factor}')
         
         plots.append(fig)
         
@@ -139,36 +139,36 @@ def plot_historical_macro_data(historical_macro_data):
 def plot_historical_portfolio_performance(combined_data):
 
     # Calculate portfolio returns absolute
-    portfolio_returns_absolute = combined_data['portfolio_returns']
-    cumulative_returns_absolute = combined_data['cumulative_returns']
+    weighted_portfolio_returns_monthly = combined_data['weighted_portfolio_returns_monthly']
+    weighted_portfolio_cumulative_returns = combined_data['weighted_portfolio_cumulative_returns']
     
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(
-        x=portfolio_returns_absolute.index,
-        y=portfolio_returns_absolute,
+        x=weighted_portfolio_returns_monthly.index,
+        y=weighted_portfolio_returns_monthly,
         fill='tozeroy',
         mode='lines',
-        name='Portfolio Returns Absolute (Weighted Portfolio)'
+        name='Weighted Portfolio Monthly Returns'
     ))
 
     fig1.update_layout(
-        title='Portfolio Returns Absolute (Weighted Portfolio)<br><sup>(not including dividends)</sup>',
-        yaxis_title='Portfolio Returns Absolute (Weighted Portfolio)',
+        title='Weighted Portfolio Monthly Returns<br><sup>(not including dividends)</sup>',
+        yaxis_title='Returns (%)',
         yaxis_tickformat='.1%'
     )
     
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(
-        x=cumulative_returns_absolute.index,
-        y=cumulative_returns_absolute,
+        x=weighted_portfolio_cumulative_returns.index,
+        y=weighted_portfolio_cumulative_returns,
         fill='tozeroy',
         mode='lines',
-        name='Portfolio Returns Cumulative (Weighted Portfolio)'
+        name='Weighted Portfolio Cumulative Returns'
     ))
 
     fig2.update_layout(
-        title='Portfolio Returns Cumulative (Weighted Portfolio)<br><sup>(not including dividends)</sup>',
-        yaxis_title='Portfolio Returns Cumulative (Weighted Portfolio)',
+        title='Weighted Portfolio Cumulative Returns<br><sup>(not including dividends)</sup>',
+        yaxis_title='Returns (%)',
         yaxis_tickformat='.1%'
     )
 

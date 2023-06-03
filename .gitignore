@@ -1,8 +1,10 @@
 .venv
+.env
+.env-bak
+config.yaml.bak
 plots
 reports
 __pycache__
-config.yaml
 ta-lib
 *.gz
 *.tar

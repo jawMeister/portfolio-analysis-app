@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-import src.session as session
+import config as config
 import src.macro.interpret as interpret
 import src.macro.calculate as calculate
 import src.macro.plot as plot
@@ -38,12 +38,18 @@ def display_collect_future_macro_estimates(user_macro_input):
 #        st.number_input("US Unemployment Rate", min_value=-10.0, max_value=20.0, step=0.5, value=user_macro_input['US Unemployment Rate']*100, format="%.1f") / 100
 
     with col2:
-        if not session.check_for_fred_api_key():
-            label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) for macro analysis"
-            temp_key = st.text_input(label, value=session.get_fred_api_key(), max_chars=32)
+        if not config.check_for_api_key('fred'):
+            label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) for macro indicators"
+            temp_key = st.text_input(label, value=config.get_api_key('fred'))
             if temp_key:
-                session.set_fred_api_key(temp_key)
+                config.set_api_key('fred', temp_key)
         
+        if not config.check_for_api_key('fmp'):
+            label = "Enter [FMP API Key](https://financialmodelingprep.com/developer/docs/) to retrieve varios macro indicators"
+            temp_key = st.text_input(label, value=config.get_api_key('fmp'))
+            if temp_key:
+                config.set_api_key('fmp', temp_key)
+                    
     return user_macro_input
 
 def display_macro_analysis(portfolio_summary):
@@ -58,11 +64,11 @@ def display_macro_analysis(portfolio_summary):
             user_macro_input = calculate.get_macro_factor_defaults()
             user_macro_input = display_collect_future_macro_estimates(user_macro_input)
             
-            if session.check_for_fred_api_key():
+            if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
                 # get historical macro data, unfiltered
                 historical_macro_data = calculate.get_historical_macro_data(portfolio_summary["start_date"], portfolio_summary["end_date"])
                 # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
-                combined_data = calculate.clean_and_combine_macro_data(portfolio_summary, historical_macro_data)
+                combined_data = calculate.clean_and_combine_macro_data(portfolio_summary['stock_data'], portfolio_summary['weights'], historical_macro_data)
                 
                 # calculate the correlation between the macro factors and the portfolio returns (monthly basis)
                 # model data will have less data points than combined_data because we need to drop any rows with NaNs for the linear regression
@@ -76,13 +82,13 @@ def display_macro_analysis(portfolio_summary):
                 
                 # hypothesis that these factors may impact cumulative performance
                 cumulative_macro_factors = ['cumulative_inflation', 'US M2 Money Supply', 'China M2 Money Supply']
-                y_cumulative = 'cumulative_returns'
+                y_cumulative = 'weighted_portfolio_cumulative_returns'
                 cumulative_models, cumulative_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, cumulative_macro_factors, y_cumulative)
                 cumulative_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, cumulative_models)
 
                 # hypothesis that these factors may impact month to month performance
                 rate_macro_factors = ['US Interest Rate', 'US Inflation Rate', 'US M2 Money Supply', 'China M2 Money Supply']
-                y_rate = 'portfolio_returns'
+                y_rate = 'weighted_portfolio_returns_monthly'
                 rate_models, rate_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, rate_macro_factors, y_rate)
                 rate_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, rate_models)
 
@@ -96,7 +102,7 @@ def display_macro_analysis(portfolio_summary):
         st.markdown("""---""")
         col1, col2, col3 = st.columns(3, gap="large")
         
-        if session.check_for_fred_api_key():
+        if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
             with col1:
                 # plot the unfiltered macro data
                 historical_macro_plots = plot.plot_historical_macro_data(historical_macro_data)
@@ -110,7 +116,7 @@ def display_macro_analysis(portfolio_summary):
                 
             with col2:
                 # plot the combined macro and portfolio data
-                macro_vs_portfolio_returns_plots = plot.plot_macro_vs_portfolio_performance(portfolio_summary, combined_data)
+                macro_vs_portfolio_returns_plots = plot.plot_macro_vs_portfolio_performance(combined_data)
             
                 for macro_vs_portfolio_returns_plot in macro_vs_portfolio_returns_plots:
                     st.plotly_chart(macro_vs_portfolio_returns_plot, use_container_width=True)
@@ -122,7 +128,7 @@ def display_macro_analysis(portfolio_summary):
                     prediction = None
                     if factor in cumulative_performance_predictions:
                         prediction = {factor: user_macro_input[factor], 'prediction': cumulative_performance_predictions[factor][0]}
-                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, cumulative_model_data, factor, "cumulative_returns", prediction=prediction))
+                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, cumulative_model_data, factor, "weighted_portfolio_cumulative_returns", prediction=prediction))
 
                     
                 for factor, model in rate_models.items():
@@ -131,7 +137,7 @@ def display_macro_analysis(portfolio_summary):
                     prediction = None
                     if factor in rate_performance_predictions:
                         prediction = {factor: user_macro_input[factor], 'prediction': rate_performance_predictions[factor][0]}
-                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, rate_model_data, factor, "portfolio_returns", prediction=prediction))
+                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, rate_model_data, factor, "weighted_portfolio_returns_monthly", prediction=prediction))
                     
                                     
                 #linear_regression_plots = plot.plot_linear_regression(linear_macro_model, model_data, X, macro_estimate_df, predicted_change_in_returns)
@@ -144,7 +150,7 @@ def display_ask_open_ai_about_macro(portfolio_summary):
     st.write("The relevance of each factor also depends on the specific holdings in your portfolio. For instance, if your portfolio consists largely of technology companies, interest rates and GDP growth might have a significant impact due to these companies' reliance on economic growth and cheap financing. Conversely, if you hold many commodity companies, inflation and geopolitical events might be more relevant.")
     st.write("For these simulations, we prioritize interest rates, inflation, and liquidity as the most critical factors to explore.")
     
-    if session.check_for_openai_api_key():
+    if config.check_for_api_key('openai'):
         if "openai_macro_response" not in st.session_state:
             st.session_state.openai_macro_response = None
             

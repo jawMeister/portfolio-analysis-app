@@ -4,6 +4,7 @@ import numpy as np
 from fredapi import Fred
 from sklearn.linear_model import LinearRegression
 import streamlit as st
+import requests
 
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
@@ -12,8 +13,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-import src.session as session
-
+import config as config
 def get_macro_factor_list():
     return ["US Interest Rate", "US Inflation Rate", "US M2 Money Supply", "China M2 Money Supply"]
 
@@ -27,13 +27,20 @@ def get_macro_factor_defaults():
 
 @st.cache_data
 def get_historical_macro_data(start_date, end_date):
-    fred = Fred(api_key=session.get_fred_api_key())
+    fred = Fred(api_key=config.get_api_key('fred'))
     logger.info(f"Fetching macroeconomic data from FRED from {start_date} to {end_date}")
     # Get macroeconomic data
     us_interest_rate = fred.get_series('GS10', start_date, end_date)  # 10-Year Treasury Constant Maturity Rate
     us_inflation = fred.get_series('T10YIE', start_date, end_date)  # 10-Year Breakeven Inflation Rate
     us_m2_money_supply = fred.get_series('M2', start_date, end_date)  # M2 Money Stock
     china_m2_money_supply = fred.get_series('MYAGM2CNM189N', start_date, end_date)  # China M2 Money Supply
+    
+    fmp_api_key = config.get_api_key('fmp')
+    logger.debug(f"Fetching economic data from FMP from {start_date} to {end_date}")
+    base_url = "https://financialmodelingprep.com/api/v4/economic"
+
+    # Get economic data
+    
     
     # Combine into a single dataframe
     macroeconomic_data = pd.concat([us_interest_rate, us_inflation, us_m2_money_supply, china_m2_money_supply], axis=1)
@@ -42,20 +49,26 @@ def get_historical_macro_data(start_date, end_date):
     
     return macroeconomic_data
 
-def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
-    # Calculate daily returns for each stock
-    stock_returns = portfolio_summary['stock_data'].pct_change()
+def clean_and_combine_macro_data(stock_data, weights, macroeconomic_data):
 
-    # Remove the timezone information from the index to enable the concat
-    if stock_returns.index.tz is not None:
-        stock_returns.index = stock_returns.index.tz_convert(None)
-        
-    if macroeconomic_data.index.tz is not None:
-        macroeconomic_data.index = macroeconomic_data.index.tz_convert(None)
+    # First, calculate the daily returns for each stock
+    daily_returns = stock_data.pct_change()
+    print(f'daily_returns tail:\n{daily_returns.tail()}')
+
+    monthly_returns = daily_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
     
-    # Resample stock returns and macroeconomic data separately
-    # taking the mean monthly return here, need to revisit this
-    stock_returns_monthly = stock_returns.sort_index().resample('M').mean()
+    # Calculate the weighted returns
+    weighted_returns = daily_returns.multiply(weights, axis=1)
+
+    # Then, calculate the portfolio return by summing across the rows (i.e., the weighted returns for each day)
+    portfolio_returns = weighted_returns.sum(axis=1)
+    print(f'portfolio_returns tail:\n{portfolio_returns.tail()}')
+
+    # Resample the portfolio returns into monthly returns
+    portfolio_returns_monthly = portfolio_returns.resample('M').apply(lambda x: (1 + x).prod() - 1)
+
+    # Finally, calculate the cumulative monthly returns
+    portfolio_cumulative_monthly_returns = (1 + portfolio_returns_monthly).cumprod() - 1
     
     # Sort by index
     macroeconomic_data = macroeconomic_data.sort_index()
@@ -69,21 +82,31 @@ def clean_and_combine_macro_data(portfolio_summary, macroeconomic_data):
     # Calculate monthly change in macroeconomic data
     macroeconomic_data_monthly_change = macroeconomic_data_monthly.pct_change()
 
-    # Calculate monthly change in macroeconomic data
+    # change the column title to reflect it's percentage change vs. absolute value
     macroeconomic_data_monthly_change = macroeconomic_data_monthly_change.add_suffix(' Change')
     
-    # Combine resampled stock returns and macroeconomic data
-    combined_data = pd.concat([stock_returns_monthly, macroeconomic_data_monthly, macroeconomic_data_monthly_change], axis=1)
+    # Remove the timezone information from the index to enable the concat
+    if monthly_returns.index.tz is not None:
+        monthly_returns.index = monthly_returns.index.tz_convert(None)
+        
+    # Remove the timezone information from the index to enable the concat
+    if portfolio_returns_monthly.index.tz is not None:
+        portfolio_returns_monthly.index = portfolio_returns_monthly.index.tz_convert(None)
+        
+    # Remove the timezone information from the index to enable the concat
+    if portfolio_cumulative_monthly_returns.index.tz is not None:
+        portfolio_cumulative_monthly_returns.index = portfolio_cumulative_monthly_returns.index.tz_convert(None)
+        
+    if macroeconomic_data.index.tz is not None:
+        macroeconomic_data.index = macroeconomic_data.index.tz_convert(None)
+    
+    combined_data = pd.concat([monthly_returns, macroeconomic_data_monthly, macroeconomic_data_monthly_change], axis=1)
     
     # The dependent variable (y) is the portfolio returns
-    portfolio_returns_absolute = (combined_data[portfolio_summary['tickers']].mul(portfolio_summary['weights'], axis=1)).sum(axis=1)
-    combined_data['portfolio_returns'] = portfolio_returns_absolute
+    combined_data['weighted_portfolio_returns_monthly'] = portfolio_returns_monthly
+    combined_data['weighted_portfolio_cumulative_returns'] = portfolio_cumulative_monthly_returns
 
-    # Calculate cumulative returns
-    cumulative_returns_absolute = (1 + portfolio_returns_absolute).cumprod() - 1
-    combined_data['cumulative_returns'] = cumulative_returns_absolute
-
-    # Calculate cumulative inflation (if desired)
+    # Calculate cumulative inflation
     combined_data['cumulative_inflation'] = combined_data['US Inflation Rate'].cumsum()
 
     return combined_data
