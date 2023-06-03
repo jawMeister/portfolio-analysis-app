@@ -18,3 +18,5 @@ tiktoken
 altair
 stqdm
 ta
+unstructured
+pdf2image

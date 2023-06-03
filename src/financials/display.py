@@ -59,7 +59,7 @@ def display_financials_analysis_for_tickers(tickers):
             financial_summary = financial_summaries[ticker]['financial_summary']
             analysis = financial_summaries[ticker]['analysis']
             
-            st.write(analysis)    
+            st.success(analysis)    
 
             income_df = financial_summary['Income Statement']
             balance_df = financial_summary['Balance Sheet']

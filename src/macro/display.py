@@ -159,7 +159,7 @@ def display_ask_open_ai_about_macro(portfolio_summary):
                 response = interpret.openai_ask_about_macro_economic_factors(portfolio_summary)
                 st.session_state.openai_macro_response = response
         if st.session_state.openai_macro_response:
-            st.write(st.session_state.openai_macro_response)
+            st.success(st.session_state.openai_macro_response)
             
 def display_macro_factors_descriptions():
     st.markdown("<span style='color:#FF4B4B;'>Interest rates:</span> Higher interest rates can reduce the attractiveness of stocks, as bonds and other interest-bearing assets become more appealing. Lower interest rates can boost stock prices as companies benefit from lower borrowing costs.", unsafe_allow_html=True)

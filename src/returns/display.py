@@ -87,7 +87,7 @@ def display_portfolio_returns_analysis(portfolio_summary):
                         response = interpret.openai_interpret_montecarlo_simulation(portfolio_summary, st.session_state.n_simulations, st.session_state.volatility_distribution)
                         st.session_state.openai_returns_response = response
                 if st.session_state.openai_returns_response:
-                    st.write(st.session_state.openai_returns_response)
+                    st.success(st.session_state.openai_returns_response)
             
     # if a backtest sim is in progress and forecast sim is complete, put the forecast sim into an expander
     # otherwise, just display the forecast sim results
