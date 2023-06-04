@@ -9,3 +9,5 @@ __pycache__
 ta-lib
 *.gz
 *.tar
+notebooks
+*.ipynb
