@@ -2,7 +2,7 @@
 FROM python:3.8-slim-buster
 
 # believe is needed by UnstructuredURLLoader - from https://unstructured-io.github.io/unstructured/installing.html
-# UnstructuredURLLoader can still hang on some URLs, so likely to use a different approach
+# UnstructuredURLLoader can still hang on some URLs even with these installed
 RUN apt-get update && apt-get install -y build-essential \  
                                             libmagic1 \
                                             libmagic-dev \

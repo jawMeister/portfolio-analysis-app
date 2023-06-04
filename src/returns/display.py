@@ -73,7 +73,7 @@ def display_portfolio_returns_analysis(portfolio_summary):
                     #st.radio("Simulation Mode", ("Forecast only", "Backtest only", "Backtest and Forecast"), key="simulation_mode")
                     st.radio("Simulation Mode", ("Forecast only", "Backtest only"), key="simulation_mode")
                     
-                st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer and uses more browser memory)", min_value=500, max_value=25000, value=5000, step=500, key="n_simulations")
+                st.slider("Monte Carlo based Portfolio Simulations (higher for smoother curves, takes longer and uses more browser memory)", min_value=500, max_value=25000, step=500, key="n_simulations")
                 run_simulation = st.form_submit_button("Run Simulations", use_container_width=True)
             st.caption("The Monte Carlo simulation leverages historical volatility to randomize future returns. Backtest results will not be saved in session.")
             

@@ -93,6 +93,8 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
         
     try:
         # Calculate efficient portfolios for plotting
+        # TODO: reconsider caching this as it's not used anywhere else and button clicks on other tabs trigger this
+        # maybe have a utils lib that is not cached and a wrapper per tab that is cached?
         efficient_portfolios = utils.calculate_efficient_portfolios(portfolio_summary["mu"], 
                                                                     portfolio_summary["S"], 
                                                                     st.session_state.risk_free_rate)

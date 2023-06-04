@@ -1,6 +1,7 @@
 .venv
 .env
 .env-bak
+requirements.txt.bak
 config.yaml.bak
 plots
 reports

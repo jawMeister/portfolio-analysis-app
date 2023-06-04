@@ -81,7 +81,6 @@ with st.sidebar:
     st.date_input("End date (for historical stock data)", key="end_date", on_change=reinitalize_tabs)
     logger.debug(f"start_date input set to start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}, session start_date: {st.session_state.start_date}")
 
-    # TODO: make this a different kind of input as clicking +/- a bunch of time causes many repaints
     rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f", on_change=reinitalize_tabs)
     st.session_state.risk_free_rate = rfr / 100.0
 
@@ -90,6 +89,9 @@ with st.sidebar:
 
     st.slider("Years to invest", min_value=1, max_value=50, step=1, value=20, key='years', on_change=reinitalize_tabs)
 
+    #TODO: every time a form/button is clicked in other places, this runs... and sometimes stocks pulled even tho cached
+    # if in session state and nothing changed, don't run? just check tickers/dates in session vs what's in the form?
+    # alternatively refactor to use streamlit pages vs tabs?
     logger.debug(f"tickers: {tickers}, start_date: {st.session_state.start_date}, end_date: {st.session_state.end_date}")
     stock_data, dividend_data = utils.get_stock_and_dividend_data(tickers, st.session_state.start_date, st.session_state.end_date)
     st.session_state.stock_data = stock_data
