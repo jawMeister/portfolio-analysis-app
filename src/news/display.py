@@ -29,7 +29,7 @@ import config as config
 GPT_3_5_TOKEN_LIMIT = 4096
 
 def display_news_analysis(portfolio_summary):
-    st.markdown('<p style="color:red;">WIP: Langchain Unstructured URL loader can hang, pressing a button will clear browser although a process can still be hung and hold the PORT</p>',unsafe_allow_html=True)
+    st.markdown('<p style="color:red;">WIP: Langchain Unstructured URL loader can hang, pressing a button from a different page will allow app to continue, although process can still be hung and hold the PORT</p>',unsafe_allow_html=True)
     input_container = st.container()
     output_container = st.container()
     st.caption("*Search & Summarize: Uses Langchaain, Serper & OpenAI APIs, to search the web for news and summarizes each search result.*")
