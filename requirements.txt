@@ -20,3 +20,6 @@ stqdm
 ta
 unstructured
 pdf2image
+pytesseract
+python-magic
+python-dotenv

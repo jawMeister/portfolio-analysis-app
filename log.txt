@@ -1,0 +1,124 @@
+2023-06-03 16:58:06,953 (DEBUG):  display.recalculate_risk_extents - Recalculating risk extents
+2023-06-03 16:58:08,762 (DEBUG):  display.get_news_for_ticker - Getting news for AMZN
+2023-06-03 16:58:08,762 (DEBUG):  display.get_news_for_ticker - Getting news for AAPL
+2023-06-03 16:58:08,763 (DEBUG):  display.get_news_for_ticker - Getting news for BAC
+2023-06-03 16:58:08,763 (DEBUG):  display.get_news_for_ticker - Getting news for BTC-USD
+2023-06-03 16:58:08,764 (DEBUG):  display.get_news_for_ticker - Getting news for ETH-USD
+2023-06-03 16:58:08,764 (DEBUG):  display.get_news_for_ticker - Getting news for GOOG
+2023-06-03 16:58:08,764 (DEBUG):  display.get_news_for_ticker - Getting news for GOLD
+2023-06-03 16:58:08,764 (DEBUG):  display.get_news_for_ticker - Getting news for MMC
+2023-06-03 16:58:08,764 (DEBUG):  display.get_news_for_ticker - Getting news for MSFT
+2023-06-03 16:58:08,765 (DEBUG):  display.get_news_for_ticker - Getting news for XOM
+2023-06-03 16:58:08,765 (DEBUG):  display.get_news_for_ticker - Getting news for NVDA
+2023-06-03 16:58:08,766 (DEBUG):  display.get_news_for_ticker - Getting news for V
+2023-06-03 16:58:09,179 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Marsh & McLennan Companies, Inc. or MMC
+2023-06-03 16:58:09,200 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Apple Inc. or AAPL
+2023-06-03 16:58:09,200 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Bank of America Corporation or BAC
+2023-06-03 16:58:09,215 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Ethereum USD or ETH-USD
+2023-06-03 16:58:09,223 (DEBUG):  display.get_news_for_ticker - Search query: financial news about NVIDIA Corporation or NVDA
+2023-06-03 16:58:09,224 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Amazon.com, Inc. or AMZN
+2023-06-03 16:58:09,243 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Barrick Gold Corporation or GOLD
+2023-06-03 16:58:09,247 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Alphabet Inc. or GOOG
+2023-06-03 16:58:09,257 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Visa Inc. or V
+2023-06-03 16:58:09,277 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Microsoft Corporation or MSFT
+2023-06-03 16:58:09,284 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Exxon Mobil Corporation or XOM
+2023-06-03 16:58:09,308 (DEBUG):  display.get_news_for_ticker - Search query: financial news about Bitcoin USD or BTC-USD
+2023-06-03 16:58:10,839 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Barrick Gold Corporation or GOLD, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:10,839 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Barrick Gold Corporation and ticker GOLD from link https://www.marketbeat.com/instant-alerts/nyse-gold-consensus-analyst-rating-2023-05-30/
+2023-06-03 16:58:10,911 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about NVIDIA Corporation or NVDA, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:10,911 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company NVIDIA Corporation and ticker NVDA from link https://www.marketbeat.com/instant-alerts/nasdaq-nvda-sec-filing-2023-06-02/
+2023-06-03 16:58:10,944 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Amazon.com, Inc. or AMZN, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:10,944 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Amazon.com, Inc. and ticker AMZN from link https://www.reuters.com/business/media-telecom/us-telecom-stocks-fall-report-amazon-talks-wireless-services-2023-06-02/
+2023-06-03 16:58:10,957 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Visa Inc. or V, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:10,957 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Visa Inc. and ticker V from link https://www.investorsobserver.com/news/stock-update/will-visa-inc-v-stay-at-the-top-of-the-financial-services-sector-5
+2023-06-03 16:58:10,989 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Marsh & McLennan Companies, Inc. or MMC, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:10,990 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.marketbeat.com/instant-alerts/nyse-mmc-sec-filing-2023-06-02/
+2023-06-03 16:58:11,002 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Ethereum USD or ETH-USD, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,002 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Ethereum USD and ticker ETH-USD from link https://milkroad.com/ethereum
+2023-06-03 16:58:11,083 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Microsoft Corporation or MSFT, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,083 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Microsoft Corporation and ticker MSFT from link https://www.cnbc.com/2023/06/01/microsoft-inks-deal-with-coreweave-to-meet-openai-cloud-demand.html
+2023-06-03 16:58:11,215 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Alphabet Inc. or GOOG, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,215 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Alphabet Inc. and ticker GOOG from link https://www.cnbc.com/2023/06/02/google-says-gmail-on-your-phone-just-got-a-lot-faster-thanks-to-ai.html
+2023-06-03 16:58:11,277 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Bitcoin USD or BTC-USD, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,277 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Bitcoin USD and ticker BTC-USD from link https://www.nasdaq.com/articles/3-top-cryptocurrencies-just-waiting-to-take-off
+2023-06-03 16:58:11,292 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Apple Inc. or AAPL, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,292 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Apple Inc. and ticker AAPL from link https://www.marketbeat.com/instant-alerts/nasdaq-aapl-sec-filing-2023-06-02/
+2023-06-03 16:58:11,317 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Bank of America Corporation or BAC, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,317 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Bank of America Corporation and ticker BAC from link https://www.reuters.com/business/finance/bank-america-ceo-sees-investment-banking-trading-staying-flat-q2-2023-06-01/
+2023-06-03 16:58:11,648 (DEBUG):  display.get_news_for_ticker - Search results returned for financial news about Exxon Mobil Corporation or XOM, dict_keys(['searchParameters', 'news'])
+2023-06-03 16:58:11,648 (DEBUG):  display.get_news_for_ticker - processing news item 0 for company Exxon Mobil Corporation and ticker XOM from link https://www.marketbeat.com/instant-alerts/nyse-xom-sec-filing-2023-06-02/
+2023-06-03 16:58:11,733 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Microsoft Corporation and ticker MSFT from link https://www.cnbc.com/2023/06/01/microsoft-inks-deal-with-coreweave-to-meet-openai-cloud-demand.html
+2023-06-03 16:58:11,733 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Microsoft Corporation and ticker MSFT from link https://finance.yahoo.com/news/nvidia-backed-coreweave-join-forces-142546034.html
+2023-06-03 16:58:11,755 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Barrick Gold Corporation and ticker GOLD from link https://www.marketbeat.com/instant-alerts/nyse-gold-consensus-analyst-rating-2023-05-30/
+2023-06-03 16:58:11,755 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Barrick Gold Corporation and ticker GOLD from link https://finance.yahoo.com/news/4-gold-stocks-watch-promising-144600238.html
+2023-06-03 16:58:11,760 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Amazon.com, Inc. and ticker AMZN from link https://www.reuters.com/business/media-telecom/us-telecom-stocks-fall-report-amazon-talks-wireless-services-2023-06-02/
+2023-06-03 16:58:11,761 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Amazon.com, Inc. and ticker AMZN from link https://www.investors.com/news/technology/amzn-stock-possible-amazon-entry-into-wireless-services-sends-telecom-stocks-down/
+2023-06-03 16:58:11,817 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.marketbeat.com/instant-alerts/nyse-mmc-sec-filing-2023-06-02/
+2023-06-03 16:58:11,817 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.zacks.com/stock/news/2103414/marsh-mclennan-mmc-unit-buys-solv-to-better-serve-clients
+2023-06-03 16:58:11,831 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Ethereum USD and ticker ETH-USD from link https://milkroad.com/ethereum
+2023-06-03 16:58:11,832 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Ethereum USD and ticker ETH-USD from link https://cointelegraph.com/news/rapid-growth-in-defi-focused-ethereum-liquid-staking-derivatives-platforms-raises-eyebrows
+2023-06-03 16:58:11,869 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Alphabet Inc. and ticker GOOG from link https://www.cnbc.com/2023/06/02/google-says-gmail-on-your-phone-just-got-a-lot-faster-thanks-to-ai.html
+2023-06-03 16:58:11,869 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Alphabet Inc. and ticker GOOG from link https://www.androidpolice.com/google-new-widget-investments-on-home-screen/
+2023-06-03 16:58:11,973 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company NVIDIA Corporation and ticker NVDA from link https://www.marketbeat.com/instant-alerts/nasdaq-nvda-sec-filing-2023-06-02/
+2023-06-03 16:58:11,973 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company NVIDIA Corporation and ticker NVDA from link https://finance.yahoo.com/news/top-analyst-reports-nvidia-bristol-205200859.html
+2023-06-03 16:58:11,989 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Microsoft Corporation and ticker MSFT from link https://finance.yahoo.com/news/nvidia-backed-coreweave-join-forces-142546034.html
+2023-06-03 16:58:11,989 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Microsoft Corporation and ticker MSFT from link https://www.nasdaq.com/articles/microsoft-inks-computing-infra-deal-with-coreweave-cnbc-0
+2023-06-03 16:58:12,002 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Amazon.com, Inc. and ticker AMZN from link https://www.investors.com/news/technology/amzn-stock-possible-amazon-entry-into-wireless-services-sends-telecom-stocks-down/
+2023-06-03 16:58:12,003 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Amazon.com, Inc. and ticker AMZN from link https://finance.yahoo.com/news/amazon-talks-offer-free-mobile-123703089.html
+2023-06-03 16:58:12,007 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Ethereum USD and ticker ETH-USD from link https://cointelegraph.com/news/rapid-growth-in-defi-focused-ethereum-liquid-staking-derivatives-platforms-raises-eyebrows
+2023-06-03 16:58:12,007 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Ethereum USD and ticker ETH-USD from link https://www.crypto-news-flash.com/gas-fees-take-a-dive-ethereum-sees-69-drop-fueling-speculation-of-an-eth-price-surge/
+2023-06-03 16:58:12,069 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Barrick Gold Corporation and ticker GOLD from link https://finance.yahoo.com/news/4-gold-stocks-watch-promising-144600238.html
+2023-06-03 16:58:12,069 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Barrick Gold Corporation and ticker GOLD from link https://beststocks.com/investing-in-barrick-gold-corporation-a-look-into/
+2023-06-03 16:58:12,070 (WARNING):  filetype.detect_filetype - The MIME type is 'application/x-empty'. This file type is not currently supported in unstructured.
+2023-06-03 16:58:12,072 (ERROR):  url.load - Error fetching or processing https://www.zacks.com/stock/news/2103414/marsh-mclennan-mmc-unit-buys-solv-to-better-serve-clients, exeption: Invalid file. The FileType.UNK file type is not supported in partition.
+2023-06-03 16:58:12,072 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.zacks.com/stock/news/2103414/marsh-mclennan-mmc-unit-buys-solv-to-better-serve-clients
+2023-06-03 16:58:12,072 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.marketbeat.com/instant-alerts/nyse-mmc-sec-filing-2023-06-01/
+2023-06-03 16:58:12,077 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Visa Inc. and ticker V from link https://www.investorsobserver.com/news/stock-update/will-visa-inc-v-stay-at-the-top-of-the-financial-services-sector-5
+2023-06-03 16:58:12,077 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Visa Inc. and ticker V from link https://www.marketwatch.com/data-news/synchrony-financial-stock-outperforms-competitors-on-strong-trading-day-b975b0f3-c582a16f89a4
+2023-06-03 16:58:12,104 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Bank of America Corporation and ticker BAC from link https://www.reuters.com/business/finance/bank-america-ceo-sees-investment-banking-trading-staying-flat-q2-2023-06-01/
+2023-06-03 16:58:12,104 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Bank of America Corporation and ticker BAC from link https://www.zacks.com/stock/news/2103354/bank-of-americas-bac-2q23-view-bleak-amid-industry-woes
+2023-06-03 16:58:12,105 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Ethereum USD and ticker ETH-USD from link https://www.crypto-news-flash.com/gas-fees-take-a-dive-ethereum-sees-69-drop-fueling-speculation-of-an-eth-price-surge/
+2023-06-03 16:58:12,105 (DEBUG):  display.get_news_for_ticker - Completed getting news for ETH-USD
+2023-06-03 16:58:12,106 (DEBUG):  display.display_news_analysis - Process returned news for: ETH-USD
+2023-06-03 16:58:12,155 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Apple Inc. and ticker AAPL from link https://www.marketbeat.com/instant-alerts/nasdaq-aapl-sec-filing-2023-06-02/
+2023-06-03 16:58:12,156 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Apple Inc. and ticker AAPL from link https://www.reuters.com/technology/apple-denies-surveillance-claims-made-by-russias-fsb-2023-06-01/
+2023-06-03 16:58:12,201 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Alphabet Inc. and ticker GOOG from link https://www.androidpolice.com/google-new-widget-investments-on-home-screen/
+2023-06-03 16:58:12,202 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Alphabet Inc. and ticker GOOG from link https://www.marketbeat.com/instant-alerts/nasdaq-goog-sec-filing-2023-06-02/
+2023-06-03 16:58:12,262 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Barrick Gold Corporation and ticker GOLD from link https://beststocks.com/investing-in-barrick-gold-corporation-a-look-into/
+2023-06-03 16:58:12,262 (DEBUG):  display.get_news_for_ticker - Completed getting news for GOLD
+2023-06-03 16:58:12,262 (DEBUG):  display.display_news_analysis - Process returned news for: GOLD
+2023-06-03 16:58:12,339 (WARNING):  filetype.detect_filetype - The MIME type is 'application/x-empty'. This file type is not currently supported in unstructured.
+2023-06-03 16:58:12,340 (ERROR):  url.load - Error fetching or processing https://www.zacks.com/stock/news/2103354/bank-of-americas-bac-2q23-view-bleak-amid-industry-woes, exeption: Invalid file. The FileType.UNK file type is not supported in partition.
+2023-06-03 16:58:12,341 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Bank of America Corporation and ticker BAC from link https://www.zacks.com/stock/news/2103354/bank-of-americas-bac-2q23-view-bleak-amid-industry-woes
+2023-06-03 16:58:12,341 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Bank of America Corporation and ticker BAC from link https://finance.yahoo.com/news/bank-of-america-ceo-says-consumer-spending-has-slowed-down-212321422.html
+2023-06-03 16:58:12,383 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Apple Inc. and ticker AAPL from link https://www.reuters.com/technology/apple-denies-surveillance-claims-made-by-russias-fsb-2023-06-01/
+2023-06-03 16:58:12,383 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Apple Inc. and ticker AAPL from link https://www.nasdaq.com/articles/apple-denies-surveillance-claims-made-by-russias-fsb
+2023-06-03 16:58:12,472 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Marsh & McLennan Companies, Inc. and ticker MMC from link https://www.marketbeat.com/instant-alerts/nyse-mmc-sec-filing-2023-06-01/
+2023-06-03 16:58:12,472 (DEBUG):  display.get_news_for_ticker - Completed getting news for MMC
+2023-06-03 16:58:12,472 (DEBUG):  display.display_news_analysis - Process returned news for: MMC
+2023-06-03 16:58:12,528 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Amazon.com, Inc. and ticker AMZN from link https://finance.yahoo.com/news/amazon-talks-offer-free-mobile-123703089.html
+2023-06-03 16:58:12,528 (DEBUG):  display.get_news_for_ticker - Completed getting news for AMZN
+2023-06-03 16:58:12,529 (DEBUG):  display.display_news_analysis - Process returned news for: AMZN
+2023-06-03 16:58:12,574 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company NVIDIA Corporation and ticker NVDA from link https://finance.yahoo.com/news/top-analyst-reports-nvidia-bristol-205200859.html
+2023-06-03 16:58:12,574 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company NVIDIA Corporation and ticker NVDA from link https://www.reuters.com/technology/nvidia-ceo-jensen-huang-may-visit-shanghai-june-6-shanghai-securities-news-2023-06-02/
+2023-06-03 16:58:12,587 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Bank of America Corporation and ticker BAC from link https://finance.yahoo.com/news/bank-of-america-ceo-says-consumer-spending-has-slowed-down-212321422.html
+2023-06-03 16:58:12,587 (DEBUG):  display.get_news_for_ticker - Completed getting news for BAC
+2023-06-03 16:58:12,587 (DEBUG):  display.display_news_analysis - Process returned news for: BAC
+2023-06-03 16:58:12,610 (DEBUG):  display.get_news_for_ticker - done processing news item 0 for company Exxon Mobil Corporation and ticker XOM from link https://www.marketbeat.com/instant-alerts/nyse-xom-sec-filing-2023-06-02/
+2023-06-03 16:58:12,610 (DEBUG):  display.get_news_for_ticker - processing news item 1 for company Exxon Mobil Corporation and ticker XOM from link https://corporate.exxonmobil.com/news/news-releases/2023/0601_lcs-nucor-agreement
+2023-06-03 16:58:12,735 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Visa Inc. and ticker V from link https://www.marketwatch.com/data-news/synchrony-financial-stock-outperforms-competitors-on-strong-trading-day-b975b0f3-c582a16f89a4
+2023-06-03 16:58:12,735 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Visa Inc. and ticker V from link https://www.marketwatch.com/data-news/discover-financial-services-stock-outperforms-market-on-strong-trading-day-505078cb-00937b4c1f22
+2023-06-03 16:58:12,796 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company NVIDIA Corporation and ticker NVDA from link https://www.reuters.com/technology/nvidia-ceo-jensen-huang-may-visit-shanghai-june-6-shanghai-securities-news-2023-06-02/
+2023-06-03 16:58:12,796 (DEBUG):  display.get_news_for_ticker - Completed getting news for NVDA
+2023-06-03 16:58:12,797 (DEBUG):  display.display_news_analysis - Process returned news for: NVDA
+2023-06-03 16:58:12,842 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Alphabet Inc. and ticker GOOG from link https://www.marketbeat.com/instant-alerts/nasdaq-goog-sec-filing-2023-06-02/
+2023-06-03 16:58:12,842 (DEBUG):  display.get_news_for_ticker - Completed getting news for GOOG
+2023-06-03 16:58:12,843 (DEBUG):  display.display_news_analysis - Process returned news for: GOOG
+2023-06-03 16:58:13,370 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Visa Inc. and ticker V from link https://www.marketwatch.com/data-news/discover-financial-services-stock-outperforms-market-on-strong-trading-day-505078cb-00937b4c1f22
+2023-06-03 16:58:13,370 (DEBUG):  display.get_news_for_ticker - Completed getting news for V
+2023-06-03 16:58:13,371 (DEBUG):  display.display_news_analysis - Process returned news for: V
+2023-06-03 16:58:13,494 (DEBUG):  display.get_news_for_ticker - done processing news item 1 for company Exxon Mobil Corporation and ticker XOM from link https://corporate.exxonmobil.com/news/news-releases/2023/0601_lcs-nucor-agreement
+2023-06-03 16:58:13,494 (DEBUG):  display.get_news_for_ticker - processing news item 2 for company Exxon Mobil Corporation and ticker XOM from link https://www.reuters.com/business/energy/exxon-signs-decarbonization-contract-with-steel-maker-nucor-2023-06-01/
+2023-06-03 16:58:13,815 (DEBUG):  display.get_news_for_ticker - done processing news item 2 for company Exxon Mobil Corporation and ticker XOM from link https://www.reuters.com/business/energy/exxon-signs-decarbonization-contract-with-steel-maker-nucor-2023-06-01/
+2023-06-03 16:58:13,815 (DEBUG):  display.get_news_for_ticker - Completed getting news for XOM
+2023-06-03 16:58:13,815 (DEBUG):  display.display_news_analysis - Process returned news for: XOM
