@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-KEY_NAMES = ['openai', 'fred', 'fmp', 'nasdaq', 'serper']
+KEY_NAMES = ['openai', 'fred', 'fmp', 'nasdaq', 'serper', 'alpha_vantage']
 
 def mask_key(key):
     if key: 

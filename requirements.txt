@@ -23,3 +23,4 @@ pdf2image
 pytesseract
 python-magic
 python-dotenv
+unstructured[local-inference]
