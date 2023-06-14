@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 print(pd.__version__)
@@ -107,16 +108,25 @@ def display_financials_analysis(portfolio_summary):
                 with subcol1:
                     initialize_input_variables(portfolio_summary)
                             
-                    st.radio("Select period:", ["Annual", "Quarterly"], key="period")
-                    st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
-                
+                    #st.radio("Select period:", ["Annual", "Quarterly"], key="period") #FMP need subscription to access quarterly
+                    st.radio("Select period:", ["Annual"], key="period")
+                    if int(os.getenv('GPT-TOKEN-LIMIT')) <= 8000:
+                        st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
+                    elif int(os.getenv('GPT-TOKEN-LIMIT')) <= 16000:
+                        st.radio("Number of past financial statements to analyze:", [4,8,10], index=2, key="n_periods") #FMP max w/o sub is 10, GPT can handle more
+                    elif int(os.getenv('GPT-TOKEN-LIMIT')) <= 32000:
+                        st.radio("Number of past financial statements to analyze:", [4,8,10], index=6, key="n_periods")
+                    else: # default to 8k
+                        st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
+                        
                 with subcol2:
                     tickers = st.text_area("Enter ticker symbols (comma separated)", key="tickers_for_financials")
                     tickers = tickers.split(",")
                     tickers = list(set(tickers))
                     
                     submitted = st.form_submit_button("Retrieve & Analyze Income Statement, Balance Sheet and Cash Flow Statements")
-            st.caption("OpenAI token limit currently limiting to 4 periods of financial statements. Financial statement data provided by [Financial Modeling Prep](https://financialmodelingprep.com/developer/docs/).")
+            if int(os.getenv('GPT-TOKEN-LIMIT')) <= 8000:
+                st.caption("OpenAI token limit currently limiting to 4 periods of financial statements. Financial statement data provided by [Financial Modeling Prep](https://financialmodelingprep.com/developer/docs/).")
 
             if not config.check_for_api_key('fmp'):
                 label = "Enter [FMP API Key](https://financialmodelingprep.com/developer/docs/) to retrieve financial statements"

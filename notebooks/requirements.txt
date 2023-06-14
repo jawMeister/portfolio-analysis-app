@@ -1,0 +1,12 @@
+python-dotenv
+datetime
+fredapi
+numpy
+pandas
+spacy[lookups]
+prophet==1.1.4
+quandl
+pyportfolioopt
+pyfolio
+empyrical
+yfinance

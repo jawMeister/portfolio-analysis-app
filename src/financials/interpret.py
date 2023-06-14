@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import openai
 
@@ -34,7 +35,7 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
         question = analyze + summary + additionally
         logger.debug(f"question for OpenAI: {question}, len: {len(question)}")
         
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": question}])
+        chat_completion = openai.ChatCompletion.create(model=os.getenv('GPT-MODEL'), messages=[{"role": "user", "content": question}])
         #gpt-4-32k
         #chat_completion = openai.ChatCompletion.create(model="gpt-4-32k", messages=[{"role": "user", "content": question}])
         

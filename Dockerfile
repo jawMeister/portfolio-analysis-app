@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.8-slim-buster
+FROM python:3.11.4-slim-buster
 
 # believe is needed by UnstructuredURLLoader - from https://unstructured-io.github.io/unstructured/installing.html
 # UnstructuredURLLoader can still hang on some URLs even with these installed
@@ -17,7 +17,11 @@ RUN apt-get update && apt-get install -y build-essential \
 WORKDIR /app
 
 # Add the current directory contents into the container at /app
-ADD . /app
+ADD app.py /app
+ADD config.py /app
+ADD requirements.txt /app
+ADD src /app/src
+ADD .env /app
 
 WORKDIR /app
 

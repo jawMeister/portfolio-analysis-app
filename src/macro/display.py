@@ -6,30 +6,28 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import config as config
 import src.macro.interpret as interpret
 import src.macro.calculate as calculate
 import src.macro.plot as plot
 
-def display_collect_future_macro_estimates(user_macro_input):
-    st.markdown('<p style="color:red;">WORK IN PROGRESS: Analyzing Macro Factor Impact on Portfolio Performance</p>',unsafe_allow_html=True)
-    logger.debug("user_macro_input: {}".format(user_macro_input))
+def display_get_api_keys():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        user_macro_input['US Interest Rate'] = \
-            st.number_input("US Interest Rate (%)", min_value=-2.0, max_value=10.0, step=0.1, value=(user_macro_input['US Interest Rate']*100), format="%.1f") / 100
+#        user_macro_input['US Interest Rate'] = \
+#            st.number_input("US Interest Rate (%)", min_value=-2.0, max_value=10.0, step=0.1, value=(user_macro_input['US Interest Rate']*100), format="%.1f") / 100
         
-        user_macro_input['US Inflation Rate'] = \
-            st.number_input("US Inflation Rate (%)", min_value=-10.0, max_value=20.0, step=0.5, value=(user_macro_input['US Inflation Rate']*100), format="%.1f") / 100
+#        user_macro_input['US Inflation Rate'] = \
+#            st.number_input("US Inflation Rate (%)", min_value=-10.0, max_value=20.0, step=0.5, value=(user_macro_input['US Inflation Rate']*100), format="%.1f") / 100
 
-        user_macro_input['US M2 Money Supply'] = \
-            st.number_input("US M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['US M2 Money Supply']*100), format="%.1f") / 100
+#        user_macro_input['US M2 Money Supply'] = \
+#            st.number_input("US M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['US M2 Money Supply']*100), format="%.1f") / 100
 
-        user_macro_input['China M2 Money Supply'] = \
-            st.number_input("China M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['China M2 Money Supply']*100), format="%.1f") / 100
+#        user_macro_input['China M2 Money Supply'] = \
+#            st.number_input("China M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['China M2 Money Supply']*100), format="%.1f") / 100
 
 #    user_macro_input['US GDP Growth Rate'] = \
 #        st.number_input("US GDP Growth Rate", min_value=-2.0, max_value=10.0, step=0.1, value=user_macro_input['US GDP Growth Rate']*100, format="%.1f") / 100
@@ -37,7 +35,7 @@ def display_collect_future_macro_estimates(user_macro_input):
 #    user_macro_input['US Unemployment Rate'] = \
 #        st.number_input("US Unemployment Rate", min_value=-10.0, max_value=20.0, step=0.5, value=user_macro_input['US Unemployment Rate']*100, format="%.1f") / 100
 
-    with col2:
+#    with col2:
         if not config.check_for_api_key('fred'):
             label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) for macro indicators"
             temp_key = st.text_input(label, value=config.get_api_key('fred'))
@@ -49,127 +47,164 @@ def display_collect_future_macro_estimates(user_macro_input):
             temp_key = st.text_input(label, value=config.get_api_key('fmp'))
             if temp_key:
                 config.set_api_key('fmp', temp_key)
-                    
-    return user_macro_input
+
 
 def display_macro_analysis(portfolio_summary):
-
+    macro_factor_description = st.container()
     user_input_container = st.container()
     plotting_container = st.container()
-    
+
+    if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
+        logger.debug(f"portfolio_summary weights:\n{portfolio_summary['weights']}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
+
+        # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
+        returns_data, cumulative_returns_data, portfolio_returns_dict, sp500_returns_dict, macro_data_dict, portfolio_tickers = \
+            calculate.get_combined_returns_data(portfolio_summary['daily_returns_by_ticker'], portfolio_summary['weights'], portfolio_summary['start_date'], portfolio_summary['end_date'])
+
+        cum_quarterly_input_data_df = calculate.prepare_data(cumulative_returns_data, 'Quarterly')
+        logger.debug(f'cum_quarterly_input_data_df.columns:\n{cum_quarterly_input_data_df.columns}')
+        cum_quarterly_regression_models_df, cum_quarterly_multivariate_models_df, cum_quarterly_var_models_df = calculate.create_regression_models(cum_quarterly_input_data_df, 'Quarterly', True)
+        
+        cum_monthly_input_data_df = calculate.prepare_data(cumulative_returns_data)
+        logger.debug(f'cum_monthly_input_data_df.columns:\n{cum_monthly_input_data_df.columns}')
+        cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, cum_monthly_var_models_df = calculate.create_regression_models(cum_monthly_input_data_df, 'Monthly', True)
+        
+        monthly_input_data_df = calculate.prepare_data(returns_data)
+        logger.debug(f'monthly_input_data_df.columns:\n{monthly_input_data_df.columns}')
+        monthly_regression_models_df, monthly_multivariate_models_df, monthly_var_models_df  = calculate.create_regression_models(monthly_input_data_df, 'Monthly', False)
+    else:
+        display_get_api_keys()
+                
+    #with macro_factor_description:
+    #    with st.expander("Macro Factor Descriptions"):
+    #        col1, col2, col3 = st.columns(3)
+    #        with col1:
+    #            display_general_macro_factors_descriptions()
+    #        with col2:
+    #            display_macro_factors_descriptions_1()
+    #        with col3:
+    #            display_macro_factors_descriptions_2()
+
     with user_input_container:
-        col1, col2, col3 = st.columns(3)
+        display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df)
+        
+        col1, col2, col3 = st.columns(3)        
         with col1:
-
-            user_macro_input = calculate.get_macro_factor_defaults()
-            user_macro_input = display_collect_future_macro_estimates(user_macro_input)
-            
-            if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
-                # get historical macro data, unfiltered
-                historical_macro_data = calculate.get_historical_macro_data(portfolio_summary["start_date"], portfolio_summary["end_date"])
-                # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
-                combined_data = calculate.clean_and_combine_macro_data(portfolio_summary['stock_data'], portfolio_summary['weights'], historical_macro_data)
-                
-                # calculate the correlation between the macro factors and the portfolio returns (monthly basis)
-                # model data will have less data points than combined_data because we need to drop any rows with NaNs for the linear regression
-                # If the correlation is positive, it means that when the interest rate or inflation increases, our portfolio returns also tend to increase.
-                #
-                # Past performance is not indicative of future results, and this analysis assumes that the relationships between these variables and portfolio 
-                # returns will remain constant in the future, which may not be the case.
-                #
-                # The model also assumes a linear relationship between the predictors and the response variable. There could be a non-linear relationship 
-                # between them which cannot be captured by this model
-                
-                # hypothesis that these factors may impact cumulative performance
-                cumulative_macro_factors = ['cumulative_inflation', 'US M2 Money Supply', 'China M2 Money Supply']
-                y_cumulative = 'weighted_portfolio_cumulative_returns'
-                cumulative_models, cumulative_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, cumulative_macro_factors, y_cumulative)
-                cumulative_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, cumulative_models)
-
-                # hypothesis that these factors may impact month to month performance
-                rate_macro_factors = ['US Interest Rate', 'US Inflation Rate', 'US M2 Money Supply', 'China M2 Money Supply']
-                y_rate = 'weighted_portfolio_returns_monthly'
-                rate_models, rate_model_data = calculate.calculate_linear_regression_models_from_macro_data_per_factor(combined_data, rate_macro_factors, y_rate)
-                rate_performance_predictions = calculate.predict_portfolio_returns_from_user_macro_input(user_macro_input, rate_models)
-
+            if 'openai_macro_synthesis_response' in st.session_state and st.session_state.openai_macro_synthesis_response: 
+                st.success(st.session_state.openai_macro_synthesis_response)
         with col2:
-            display_ask_open_ai_about_macro(portfolio_summary)
-                            
+            display_general_macro_factors_descriptions()
+
+            #if 'openai_macro_portfolio_response' in st.session_state and st.session_state.openai_macro_portfolio_response: 
+            #    st.success(st.session_state.openai_macro_portfolio_response)
+            #if 'openai_macro_linear_regression_response' in st.session_state and st.session_state.openai_macro_linear_regression_response: 
+            #    st.success(st.session_state.openai_macro_linear_regression_response)
         with col3:
-            display_macro_factors_descriptions()
+            display_macro_factors_descriptions_1()
+            display_macro_factors_descriptions_2()
+            
+            #if 'openai_macro_multivariate_regression_response' in st.session_state and st.session_state.openai_macro_multivariate_regression_response: 
+            #    st.success(st.session_state.openai_macro_multivariate_regression_response)
+            #if 'openai_macro_var_model_response' in st.session_state and st.session_state.openai_macro_var_model_response: 
+            #    st.success(st.session_state.openai_macro_var_model_response)
 
     with plotting_container:
         st.markdown("""---""")
-        col1, col2, col3 = st.columns(3, gap="large")
-        
-        if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
-            with col1:
-                # plot the unfiltered macro data
-                historical_macro_plots = plot.plot_historical_macro_data(historical_macro_data)
-                for historical_macro_plot in historical_macro_plots:
-                    st.plotly_chart(historical_macro_plot, use_container_width=True)
-                
-                absolute_portfolio_plot, cumulative_portfolio_plot = plot.plot_historical_portfolio_performance(combined_data)
-                st.plotly_chart(absolute_portfolio_plot, use_container_width=True)
-                st.plotly_chart(cumulative_portfolio_plot, use_container_width=True)
-                st.write(combined_data)
-                
-            with col2:
-                # plot the combined macro and portfolio data
-                macro_vs_portfolio_returns_plots = plot.plot_macro_vs_portfolio_performance(combined_data)
-            
-                for macro_vs_portfolio_returns_plot in macro_vs_portfolio_returns_plots:
-                    st.plotly_chart(macro_vs_portfolio_returns_plot, use_container_width=True)
-            
-            with col3:
-                # plot the linear regression model
-                for factor, model in cumulative_models.items():
-                    st.write(display_regression_formula(model, factor, "Cumulative Returns"))
-                    prediction = None
-                    if factor in cumulative_performance_predictions:
-                        prediction = {factor: user_macro_input[factor], 'prediction': cumulative_performance_predictions[factor][0]}
-                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, cumulative_model_data, factor, "weighted_portfolio_cumulative_returns", prediction=prediction))
 
+        if cum_quarterly_regression_models_df is not None and cum_monthly_regression_models_df is not None and monthly_regression_models_df is not None:
+            with st.expander("Cumlative Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=True):                    
+                display_summary_of_linear_regression_results(cum_monthly_regression_models_df, 'Monthly')
+                display_individual_linear_regression_results(cum_monthly_input_data_df, cum_monthly_regression_models_df, 'Monthly', cumulative_performance=True)
                     
-                for factor, model in rate_models.items():
-                    # ... (plot the regression here)
-                    st.write(display_regression_formula(model, factor, "Monthly Returns"))
-                    prediction = None
-                    if factor in rate_performance_predictions:
-                        prediction = {factor: user_macro_input[factor], 'prediction': rate_performance_predictions[factor][0]}
-                    st.plotly_chart(plot.plot_linear_regression_v_single_model(model, rate_model_data, factor, "weighted_portfolio_returns_monthly", prediction=prediction))
-                    
-                                    
-                #linear_regression_plots = plot.plot_linear_regression(linear_macro_model, model_data, X, macro_estimate_df, predicted_change_in_returns)
-                #for linear_regression_plot in linear_regression_plots:
-                #    st.plotly_chart(linear_regression_plot, use_container_width=True)
-            
+            with st.expander("Cumulative Monthly Returns vs. Macro Factors (multivariate regression of portfolio performance showing most significant factors)"):
+                with st.container():
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write("The p-value in a multivariate regression is used to determine the statistical significance of each macro factor in a model of all the factors together against portfolio performance. It is the probability that the effect of a factor in the model is due to chance, under the null hypothesis. The null hypothesis usually posits that the true coefficient of the variable in the regression is zero, meaning that the factor has no effect on the portfolio returns.")
+                    with col2:
+                        st.write("A small p-value (typically ≤ 0.05) indicates strong evidence that the factor is meaningful or 'significant' in the relationship to the outcome variable (portfolio returns). It suggests that changes in the predictor's value (the factor) are related to changes in the response variable (portfolio returns).")
+                        st.write("A larger p-value suggests that changes in the predictor (the macro factor) are not associated with changes in the response. If you see a large p-value, you would fail to reject the null hypothesis because there isn't enough evidence to conclude that a meaningful relationship exists.")
+                    with col3:
+                        st.write("In the context of this regression model, for each macroeconomic factor, the corresponding p-value can tell you whether changes in this factor are statistically significantly associated with changes in the portfolio return, given the presence of all the other factors in the model.")
+                        st.write("It's important to note that while the p-value can inform the statistical significance of an effect, it does not provide information about the size or practical significance of the effect. Furthermore, p-values are also dependent on the sample size, and very large samples can result in small p-values even for trivially small effects. Therefore, it's always a good idea to look at the size of the effect and not just the p-value.")
 
-def display_ask_open_ai_about_macro(portfolio_summary):
-    st.write("Deciding which macroeconomic factors to explore depends on the nature of your portfolio and your investment horizon. For a long-term equity portfolio, interest rates, inflation, and GDP growth could be more critical. For a short-term or bond portfolio, interest rates and liquidity might be more important.")
-    st.write("The relevance of each factor also depends on the specific holdings in your portfolio. For instance, if your portfolio consists largely of technology companies, interest rates and GDP growth might have a significant impact due to these companies' reliance on economic growth and cheap financing. Conversely, if you hold many commodity companies, inflation and geopolitical events might be more relevant.")
-    st.write("For these simulations, we prioritize interest rates, inflation, and liquidity as the most critical factors to explore.")
+                with st.container():
+                    col1, col2 = st.columns(2)
+                    fig_coef, fig_pval, sig_feature_plots = plot.plot_multivariate_results(cum_monthly_input_data_df, cum_monthly_multivariate_models_df.loc[0, 'Model'], cum_monthly_multivariate_models_df.loc[0, 'Significant Features'])
+                    with col1:
+                        st.plotly_chart(fig_pval, use_container_width=True)
+                    with col2:
+                        st.plotly_chart(fig_coef, use_container_width=True)
+                        
+                    last_column_used = 2
+                    for feature_plot in sig_feature_plots:
+                        # Decide the column based on the last one used
+                        if last_column_used == 1:
+                            col = col2
+                            last_column_used = 2
+                        else:
+                            col = col1
+                            last_column_used = 1
+                        # Add the plot to the chosen column
+                        with col:
+                            st.plotly_chart(feature_plot, use_container_width=True)
+                    
+            with st.expander("Predicted Impact on Portfolio Returns with Macro Factor Shock (vector autogression - testing impact of macro factor shock on portfolio returns)"):
+                logger.debug(f'cum_var_models_df.columns:\n{monthly_var_models_df.columns}, var_models_df.shape: {monthly_var_models_df.shape}')
+                fig = plot.plot_irf(monthly_var_models_df.loc[0, 'Model'])
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("Cumlative Quarterly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=False):
+                display_summary_of_linear_regression_results(cum_quarterly_regression_models_df, 'Quarterly')
+                display_individual_linear_regression_results(cum_quarterly_input_data_df, cum_quarterly_regression_models_df, 'Quarterly', cumulative_performance=True)
+                    
+            logger.debug(f'regression_models_df.columns:\n{monthly_regression_models_df.columns}')
+            with st.expander("Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)"):
+                display_summary_of_linear_regression_results(monthly_regression_models_df, 'Monthly')
+                display_individual_linear_regression_results(monthly_input_data_df, monthly_regression_models_df, 'Monthly', cumulative_performance=False)    
     
+
+def display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df):
     if config.check_for_api_key('openai'):
         if "openai_macro_response" not in st.session_state:
             st.session_state.openai_macro_response = None
             
         if st.button("Ask OpenAI about Macro Economic Factors that may impact this portfolio"):
             with st.spinner("Waiting for OpenAI API to respond..."):
-                response = interpret.openai_ask_about_macro_economic_factors(portfolio_summary)
-                st.session_state.openai_macro_response = response
-        if st.session_state.openai_macro_response:
-            st.success(st.session_state.openai_macro_response)
+                synthesis_response, portfolio_response, linear_regression_response, multivariate_regression_response, var_model_response = interpret.openai_ask_about_macro_economic_factors(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df)
+                st.session_state.openai_macro_synthesis_response = synthesis_response
+                st.session_state.openai_macro_portfolio_response = portfolio_response
+                st.session_state.openai_macro_linear_regression_response = linear_regression_response
+                st.session_state.openai_macro_multivariate_regression_response = multivariate_regression_response
+                st.session_state.openai_macro_var_model_response = var_model_response
             
-def display_macro_factors_descriptions():
-    st.markdown("<span style='color:#FF4B4B;'>Interest rates:</span> Higher interest rates can reduce the attractiveness of stocks, as bonds and other interest-bearing assets become more appealing. Lower interest rates can boost stock prices as companies benefit from lower borrowing costs.", unsafe_allow_html=True)
+def display_general_macro_factors_descriptions():
+    st.markdown("<span style='color:#FF4B4B;'>General Macro Economic Conditions that may affect Portfolio Performance</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Interest rates:</span> This is the interest rate at which depository institutions trade federal funds (balances held at Federal Reserve Banks) with each other overnight. When the Federal Reserve (the Fed) changes the target federal funds rate, it aims to influence short-term interest rates, inflation, and the overall economy including the stock market. Higher interest rates can make borrowing costlier for companies, potentially leading to a decrease in corporate profits and a corresponding decline in stock prices.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>Inflation:</span> Higher inflation can erode purchasing power and negatively impact the real returns of a portfolio. Some assets, like certain commodities or inflation-protected securities, may perform better under higher inflation.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>Liquidity:</span> During times of low liquidity, it can be harder to buy or sell assets without impacting the market price. This can affect the ability to efficiently manage a portfolio.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>GDP Growth:</span> Higher GDP growth can indicate a strong economy and be positive for stocks, while lower GDP growth or a recession can be negative.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>Unemployment rate:</span> High unemployment can be a sign of a weak economy and could negatively impact stocks, while low unemployment could indicate a strong economy and be positive for stocks.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>Political Stability:</span> Political instability can increase market volatility and affect portfolio returns.", unsafe_allow_html=True)
-    st.markdown("<span style='color:#FF4B4B;'>Geopolitical events:</span> Wars, trade disputes, and other geopolitical events can cause market volatility and affect portfolio returns.", unsafe_allow_html=True)
-    st.markdown("<span style='color:#FF4B4B;'>Regulatory changes:</span> Changes in regulations can affect specific sectors positively or negatively.", unsafe_allow_html=True)
+    
+    st.write("Deciding which macroeconomic factors to explore depends on the nature of your portfolio and your investment horizon. For a long-term equity portfolio, interest rates, inflation, and GDP growth could be more critical. For a short-term or bond portfolio, interest rates and liquidity might be more important.")
+    st.write("The relevance of each factor also depends on the specific holdings in your portfolio. For instance, if your portfolio consists largely of technology companies, interest rates and GDP growth might have a significant impact due to these companies' reliance on economic growth and cheap financing. Conversely, if you hold many commodity companies, inflation and geopolitical events might be more relevant.")
+    
+def display_macro_factors_descriptions_1():
+    st.markdown("<span style='color:#FF4B4B;'>Specific Macro Economic Factors Analyzed against Portfolio Performance</span>", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Federal Funds Rate (FEDFUNDS):</span> This is the interest rate at which depository institutions trade federal funds (balances held at Federal Reserve Banks) with each other overnight. When the Federal Reserve (the Fed) changes the target federal funds rate, it aims to influence short-term interest rates, inflation, and the overall economy including the stock market. Higher interest rates can make borrowing costlier for companies, potentially leading to a decrease in corporate profits and a corresponding decline in stock prices.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Unemployment Rate (UNRATE):</span> This is the percentage of the total labor force that is jobless and actively seeking employment. A high unemployment rate typically corresponds to a slow economy, which can negatively affect corporate profits and stock prices. Conversely, a low unemployment rate often signals a strong economy, which can be positive for stocks.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Consumer Price Index (CPIAUCSL):</span> This is a measure of the average change over time in the prices paid by urban consumers for a market basket of consumer goods and services. An increase in the CPI is a signal that inflation is present, which can erode purchasing power and potentially lead to higher interest rates, negatively affecting stock prices.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Personal Consumption Expenditures (PCE):</span> This measures the value of the goods and services purchased by, or on the behalf of, U.S. residents. High PCE indicates strong consumer spending and could be positive for stocks, especially those in the consumer discretionary sector.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Retail Sales (RSAFS):</span> This measures the total receipts at stores that sell merchandise and related services to final consumers. Rising retail sales can indicate a strong economy and higher corporate profits, which could be positive for stocks.", unsafe_allow_html=True)
+
+def display_macro_factors_descriptions_2():
+    st.markdown("<span style='color:#FF4B4B;'>Initial Claims (ICSA):</span> This measures the number of people filing first-time claims for state unemployment insurance. An increase in initial claims can indicate weakening economic conditions and can be a negative signal for the stock market.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Housing Starts (HOUST):</span> This measures the number of new residential construction projects that have begun during any particular month. Housing starts can provide a signal about the health of the economy, with increasing housing starts potentially indicating a strong economy and being positive for stocks, especially those in the housing and related sectors.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>5-Year Forward Inflation Expectation Rate (T5YIFR):</span> This is a measure of expected inflation (on average) over the five-year period that begins five years from today. If investors expect high inflation in the future, they may demand higher yields on investments leading to a potential decline in stock prices.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Economic Policy Uncertainty Index for United States (USEPUINDXD):</span> This index quantifies newspaper coverage of policy-related economic uncertainty. A higher index level indicates greater uncertainty, which can increase market volatility and potentially lead to lower stock prices.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>10-Year Treasury Constant Maturity Rate (GS10):</span> This is the yield on U.S. Treasury securities at a constant maturity of 10 years. Treasury yields serve as a benchmark for interest rates and can influence the prices of stocks. When yields rise, stocks can become less appealing to investors as bonds offer higher guaranteed returns.", unsafe_allow_html=True)
+    st.markdown("<span style='color:#FF4B4B;'>Gross Domestic Product (GDPC1):</span> This is the broadest measure of economic activity. A growing GDP indicates a healthy, expanding economy, which is generally good for corporate profits and equity markets. On the other hand, a contracting GDP may signal a recession, which can lead to declining stock prices.", unsafe_allow_html=True)
 
 def display_regression_formula(model, factor_name, y):
     # Get the intercept and coefficient
@@ -181,3 +216,38 @@ def display_regression_formula(model, factor_name, y):
     
     # Display the formula
     st.write(formula)
+    
+def display_summary_of_linear_regression_results(regression_models_df, time_basis):
+    col1, col2, col3 = st.columns(3, gap="small")
+    fig_pval, fig_r2, fig_corr = plot.create_linear_regression_summary_charts(regression_models_df)
+    with col1:
+        st.markdown("<span style='color:#FF4B4B;'>p-value:</span> This value is related to the significance of the macro factor vs. portfolio returns. A lower p-value indicates that a factor is statistically significant. Sorting by p-value in ascending order will give you the factors in order of their statistical significance.", unsafe_allow_html=True)
+        st.plotly_chart(fig_pval, use_container_width=True)
+    with col2:
+        st.markdown("<span style='color:#FF4B4B;'>Correlation:</span> This value is a measure of how well the regression line approximates the real data points. An R-squared of 100 percent indicates that all changes in the portfolio returns are completely explained by changes in the factor. So, sorting by R-squared value in descending order will give you the factors in order of their explanatory power.", unsafe_allow_html=True)
+        st.plotly_chart(fig_corr, use_container_width=True)
+    with col3:
+        st.markdown("<span style='color:#FF4B4B;'>R-squared value:</span> This value measures the strength and direction of a linear relationship between the macro factor and portfolio returns. Sorting by absolute correlation value in descending order will give you the factors in order of their linear relationship strength with the portfolio returns.", unsafe_allow_html=True)
+        st.plotly_chart(fig_r2, use_container_width=True)
+        
+def display_individual_linear_regression_results(input_data_df, regression_models_df, time_basis, cumulative_performance=False):
+    st.markdown("""---""")
+    col1, col2, col3, col4 = st.columns(4, gap="small")
+    with col1:
+        st.write("<span style='color:#FF4B4B;'>Portfolio Performance vs Macro Factor over Time</span>", unsafe_allow_html=True)
+        st.write("This plot shows the portfolio returns and the given factor (e.g., S&P 500, unemployment rate, GDP growth, etc.) over time. You want to see if there are any visible patterns or correlations. Do they seem to move together (i.e., both go up or down at the same time)? Do they move in opposite directions? If there's a visible relationship, that's a good sign that your factor may be a useful predictor. Of course, you'd have to validate this with more rigorous statistical tests.")
+    with col2:
+        st.write("<span style='color:#FF4B4B;'>Scatter of Portfolio Returns vs Macro Factor Values</span>", unsafe_allow_html=True)
+        st.write("This plot shows each observation of your portfolio returns against the factor. You're looking for any kind of relationship - linear, non-linear, or no relationship at all. A linear relationship where the points cluster around a straight line (either increasing or decreasing) is a good sign that linear regression may be a good model. If you see a different pattern, like a curve or clusters, a different model might be more appropriate.")
+    with col3:
+        st.write("<span style='color:#FF4B4B;'>Predicted Portfolio Returns vs Macro Factor Values</span>", unsafe_allow_html=True)
+        st.write("This plot shows the predicted portfolio returns given the actual values of the macro factor. The model's predictions for different factor levels are visualized here. If the model has captured the relationship accurately, you would expect to see a trend in the predicted returns corresponding to the actual values of the macro factor.")
+    with col4:
+        st.write("<span style='color:#FF4B4B;'>Residuals (error) vs Macro Factor Values</span>", unsafe_allow_html=True)
+        st.write("This plot shows the residuals, i.e., the differences between the actual portfolio returns and the model's predictions, plotted against the macro factor's values. In a well-performing model, you'd expect to see the residuals scattered randomly around the zero line across the range of the factor values. If you see patterns in the residuals, such as a curve or a funnel shape, it's a sign that the model isn't capturing some aspect of the data, and the assumptions of the linear regression may not be fully satisfied.")
+   
+    # Sort regression models by p-value
+    sorted_regression_models_df = regression_models_df.sort_values(by='P-value', ascending=True)
+    for index, row in sorted_regression_models_df.iterrows():
+        fig = plot.create_linear_regression_plots(input_data_df, row['Factor'], sorted_regression_models_df, time_basis, cumulative_performance=cumulative_performance)
+        st.plotly_chart(fig, use_container_width=True)

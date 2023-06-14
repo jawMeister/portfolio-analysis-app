@@ -172,6 +172,8 @@ def retrieve_financial_summary_and_analysis_for_tickers(tickers, period, n_perio
     n_cores = multiprocessing.cpu_count()
     max_workers = min(n_cores, len(tickers))
     
+    logger.debug(f"Retrieving financial summary and analysis for {len(tickers)} tickers with {max_workers} workers")
+    
     results = {}
     with stqdm(total=len(tickers)) as pbar:
         with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:

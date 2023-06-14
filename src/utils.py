@@ -302,8 +302,6 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     cumulative_daily_returns = (1 + stock_data.pct_change()).cumprod() - 1
     cumulative_daily_returns.reset_index(inplace=True)
     
-
-
     # Obtain weights, return, volatility, and Sharpe ratio
     weights = ef.clean_weights()
     weights = pd.Series(weights).reindex(simple_returns.columns)
@@ -324,7 +322,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
                          "dividend_data": dividend_data, 
                          "mu": mu, 
                          "S": S, 
-                         "simple_returns_by_ticker": simple_returns,
+                         "daily_returns_by_ticker": simple_returns,
                          "start_date": start_date, 
                          "end_date": end_date, 
                          "risk_level": risk_level, 
@@ -341,6 +339,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
                          "cvar": cvar,
                          "treynor_ratio": treynor_ratio,
                          "tickers": weights.index.tolist(),
+                         "weighted_portfolio_daily_returns": weighted_portfolio_returns,
                          "cumulative_weighted_portfolio_returns": cumulative_weighted_portfolio_returns}
         
     portfolio_df = pd.DataFrame({'Stock': stock_data.columns,'Weight': weights})
@@ -524,7 +523,7 @@ def get_mean_returns_models():
     return ["Historical Returns (Geometric Mean)", "Historical Weighted w/Recent Data", "Capital Asset Pricing Model (CAPM)"]
 
 def get_efficient_frontier_models():
-    return ["Minimum Volatility",  "Balanced Portfolio (Sharpe Ratio = 1)", "Maximum Sharpe Ratio", "Selected Risk Level"]
+    return ["Selected Risk Level", "Maximum Sharpe Ratio", "Balanced Portfolio (Sharpe Ratio = 1)", "Minimum Volatility"]
 
 # calculates cumulative daily returns, each row contains the cumulative return up until that day
 def calculate_cumulative_daily_returns(stock_data):

@@ -43,7 +43,7 @@ def initialize_inputs():
         st.session_state.ticker_weights_plot = None
         
     if 'rebalance_portfolio_type' not in st.session_state:
-        st.session_state.rebalance_type = 'Selected Portfolio'
+        st.session_state.rebalance_type = 'Selected Risk Level'
     
     logger.debug(f"init: rebalance portfolio type in session: {'rebalance_returns_model_type' in st.session_state}")
     if 'rebalance_returns_model_type' not in st.session_state:
@@ -86,7 +86,7 @@ def display_rebalancing_analysis(portfolio_summary):
     initialize_inputs()
 
     with st.container():
-        col1, col2 = st.columns([1, 3])
+        col1, col2, col3 = st.columns(3)
         with col1:
             # TODO: style this like a form
             with st.form("Rebalance Variables"):  # wish could use form, altho no calbacks within form to update risk extents
@@ -112,6 +112,11 @@ def display_rebalancing_analysis(portfolio_summary):
                         "NOTE: not all rebalancing approaches can be solved correctly, particularly for smaller time slices with negative returns.")
             st.caption("Other rebalancing approaches (e.g., macro, technical inflection points) along with simulations to optimize rebalancing " + \
                         "period and trailing period in progress.")
+        with col2:
+            st.write("TODO: rebalance on macro factor changes")
+            
+        with col3:
+            st.write("TODO: rebalance on technical inflection points")
             
         if rebalance:
             # split the historical data into rebalancing periods
