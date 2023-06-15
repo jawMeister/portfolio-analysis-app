@@ -68,19 +68,7 @@ def reinitalize_tabs():
     st.session_state.technical_tab_initialized = False
     
 with st.sidebar:
-    initalize_inputs()
-    
-    # Authenticate the user with Google
-    credentials = authenticate()
-    if credentials and credentials.valid:
-        try:
-            id_info = id_token.verify_oauth2_token(credentials.id_token, requests.Request())
-            st.write('Welcome, ' + id_info['name'] + '!')
-        except ValueError:
-            st.write('Invalid token')
-    else:
-        st.write('Authentication failed')
-    
+    initalize_inputs()    
     st.write("This app is pre-beta, still iterating over calculations which may not be correct although should be directionally accurate.  Please report any issues or suggestions to the [github repo](https://github.com/jawMeister/portfolio-analysis-app)")
     
     #tickers = st.multiselect("Select ticker symbols", ["AAPL", "AMZN", "NVDA", "MMC", "GOOG", "MSFT", "BTC-USD","XOM","BAC","V","MMC","GOLD"])
