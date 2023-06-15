@@ -1,8 +1,6 @@
+import os
 import streamlit as st
 from datetime import datetime, timedelta
-
-#from google.oauth2 import id_token
-#from google.auth.transport import requests
 
 import warnings
 warnings.filterwarnings("ignore", message="Module \"zipline.assets\" not found")
@@ -28,34 +26,6 @@ from src.news import display as news
 
    
 st.set_page_config(page_title="stock portfolio optimization", layout="wide")
-
-# Define the Google OAuth 2.0 client ID and secret
-#CLIENT_ID = 'your-client-id'
-#CLIENT_SECRET = 'your-client-secret'
-
-# Define the Google OAuth 2.0 scopes that your app needs
-#SCOPES = ['openid', 'email', 'profile']
-
-# Define a function to authenticate the user with Google
-
-#def authenticate():
-    # Check if the user is running the app locally or in GCP
-#    if 'GAE_APPLICATION' in os.environ:
-        # Authenticate the user using the Google Cloud SDK
-#        credentials, _ = google.auth.default(scopes=SCOPES)
-#        return credentials.token
-#    else:
-        # Authenticate the user using the Google OAuth 2.0 flow
-#        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-#            'client_secret.json', scopes=SCOPES)
-#        flow.redirect_uri = 'http://localhost:8080'
-#        authorization_url, _ = flow.authorization_url(
-#            access_type='offline', include_granted_scopes='true')
-#        st.write('Please go to this URL to authorize the application: ' + authorization_url)
-#        response_url = st.text_input('Enter the URL of the response:', '')
-#        flow.fetch_token(authorization_response=response_url)
-#        return flow.credentials.token
-  
 
 # TODO: add an on change event to the sidebar to reinitialize the session state vars
 def initalize_inputs():
@@ -99,6 +69,17 @@ def reinitalize_tabs():
     
 with st.sidebar:
     initalize_inputs()
+    
+    # Authenticate the user with Google
+    credentials = authenticate()
+    if credentials and credentials.valid:
+        try:
+            id_info = id_token.verify_oauth2_token(credentials.id_token, requests.Request())
+            st.write('Welcome, ' + id_info['name'] + '!')
+        except ValueError:
+            st.write('Invalid token')
+    else:
+        st.write('Authentication failed')
     
     st.write("This app is pre-beta, still iterating over calculations which may not be correct although should be directionally accurate.  Please report any issues or suggestions to the [github repo](https://github.com/jawMeister/portfolio-analysis-app)")
     

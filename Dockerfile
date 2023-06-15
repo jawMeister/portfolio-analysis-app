@@ -21,7 +21,6 @@ ADD app.py /app
 ADD config.py /app
 ADD requirements.txt /app
 ADD src /app/src
-ADD .env /app
 
 WORKDIR /app
 
