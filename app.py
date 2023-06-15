@@ -29,6 +29,7 @@ st.set_page_config(page_title="stock portfolio optimization", layout="wide")
 
 # TODO: add an on change event to the sidebar to reinitialize the session state vars
 def initalize_inputs():
+    logger.debug("initializing app")
     if 'app_initialized' not in st.session_state:
         st.session_state.app_initialized = False
         

@@ -34,4 +34,4 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
 EXPOSE 8501
 
 # Run app.py when the container launches
-CMD streamlit run --server.port 8501 --server.enableCORS true app.py
+ENTRYPOINT ["streamlit", "run", "--server.port", "8501", "--server.enableCORS", "true", "app.py"]
