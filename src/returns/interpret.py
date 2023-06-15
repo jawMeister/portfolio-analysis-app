@@ -15,8 +15,8 @@ def openai_interpret_montecarlo_simulation(portfolio_summary, number_of_simulati
                 
         portfolio_stats = f"Given a portfolio with a Sharpe Ratio of {portfolio_summary['sharpe_ratio']:.2f}, Sortino Ratio of {portfolio_summary['sortino_ratio']:.2f}, " + \
                             f"CVaR of {portfolio_summary['cvar']:.2f} composed of {tickers} weighted as {portfolio_summary['weights']}," + \
-                                "I executed a Monte Carlo Simulation with {number_of_simulations} simulations over {portfolio_summary['years']} years " + \
-                                    "to simulate future returns by leveraging a {volatility_distribution} for volatily per asset to establish random returns. "
+                                f"I executed a Monte Carlo Simulation with {number_of_simulations} simulations over {portfolio_summary['years']} years " + \
+                                    f"to simulate future returns by leveraging a {volatility_distribution} for volatily per asset to establish random returns. "
         
         question = portfolio_stats + \
                     "What is your assessment of this portfolio, " + \

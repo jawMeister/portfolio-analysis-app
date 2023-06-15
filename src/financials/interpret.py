@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 import config as config
 
@@ -33,7 +33,7 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
         additionally = f"Also, write an overall summary on the aggregate results over time sharing positives as well as any concerns with respect to the overall financial health of the company."
                     
         question = analyze + summary + additionally
-        logger.debug(f"question for OpenAI: {question}, len: {len(question)}")
+        logger.info(f"question for OpenAI: {question}, len: {len(question)}")
         
         chat_completion = openai.ChatCompletion.create(model=os.getenv('GPT_MODEL'), messages=[{"role": "user", "content": question}])
         #gpt-4-32k

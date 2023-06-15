@@ -6,36 +6,47 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 import config as config
 import src.macro.interpret as interpret
 import src.macro.calculate as calculate
 import src.macro.plot as plot
 
+def initialize_macro_analysis_inputs(portfolio_summary):
+    # We use ticker_weights_sorted as a key for our session state
+    ticker_weights_sorted = portfolio_summary['weights'][portfolio_summary['weights'] > 0].sort_values(ascending=False)
+
+    st.session_state.setdefault('macro_start_date',None)
+    st.session_state.setdefault('macro_end_date', None)
+    st.session_state.setdefault('macro_weighted_ticker_list', ticker_weights_sorted.index.tolist())
+
+    st.session_state.setdefault('returns_data', None)
+    st.session_state.setdefault('cumulative_returns_data', None)
+    st.session_state.setdefault('portfolio_returns_dict', None)
+    st.session_state.setdefault('sp500_returns_dict', None)
+    st.session_state.setdefault('macro_data_dict', None)
+    st.session_state.setdefault('portfolio_tickers', None)
+
+    st.session_state.setdefault('cum_quarterly_input_data_df', None)
+    st.session_state.setdefault('cum_quarterly_regression_models_df', None)
+    st.session_state.setdefault('cum_quarterly_multivariate_models_df', None)
+    st.session_state.setdefault('cum_quarterly_var_models_df', None)
+
+    st.session_state.setdefault('cum_monthly_input_data_df', None)
+    st.session_state.setdefault('cum_monthly_regression_models_df', None)
+    st.session_state.setdefault('cum_monthly_multivariate_models_df', None)
+    st.session_state.setdefault('cum_monthly_var_models_df', None)
+
+    st.session_state.setdefault('monthly_input_data_df', None)
+    st.session_state.setdefault('monthly_regression_models_df', None)
+    st.session_state.setdefault('monthly_multivariate_models_df', None)
+    st.session_state.setdefault('monthly_var_models_df', None)
+
 def display_get_api_keys():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-#        user_macro_input['US Interest Rate'] = \
-#            st.number_input("US Interest Rate (%)", min_value=-2.0, max_value=10.0, step=0.1, value=(user_macro_input['US Interest Rate']*100), format="%.1f") / 100
-        
-#        user_macro_input['US Inflation Rate'] = \
-#            st.number_input("US Inflation Rate (%)", min_value=-10.0, max_value=20.0, step=0.5, value=(user_macro_input['US Inflation Rate']*100), format="%.1f") / 100
-
-#        user_macro_input['US M2 Money Supply'] = \
-#            st.number_input("US M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['US M2 Money Supply']*100), format="%.1f") / 100
-
-#        user_macro_input['China M2 Money Supply'] = \
-#            st.number_input("China M2 Money Supply Rate (%)", min_value=7.5, max_value=50.0, step=2.5, value=(user_macro_input['China M2 Money Supply']*100), format="%.1f") / 100
-
-#    user_macro_input['US GDP Growth Rate'] = \
-#        st.number_input("US GDP Growth Rate", min_value=-2.0, max_value=10.0, step=0.1, value=user_macro_input['US GDP Growth Rate']*100, format="%.1f") / 100
-
-#    user_macro_input['US Unemployment Rate'] = \
-#        st.number_input("US Unemployment Rate", min_value=-10.0, max_value=20.0, step=0.5, value=user_macro_input['US Unemployment Rate']*100, format="%.1f") / 100
-
-#    with col2:
         if not config.check_for_api_key('fred'):
             label = "Enter [FRED API Key](https://fred.stlouisfed.org/docs/api/api_key.html) for macro indicators"
             temp_key = st.text_input(label, value=config.get_api_key('fred'))
@@ -50,71 +61,71 @@ def display_get_api_keys():
 
 
 def display_macro_analysis(portfolio_summary):
-    macro_factor_description = st.container()
+    initialize_macro_analysis_inputs(portfolio_summary)
+    macro_factor_description_container = st.container()
     user_input_container = st.container()
     plotting_container = st.container()
 
     if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
         logger.debug(f"portfolio_summary weights:\n{portfolio_summary['weights']}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
-
-        # bring the macro data into the same format as the portfolio data as a new df (monthly basis), clean it and do some summary calcs
-        returns_data, cumulative_returns_data, portfolio_returns_dict, sp500_returns_dict, macro_data_dict, portfolio_tickers = \
-            calculate.get_combined_returns_data(portfolio_summary['daily_returns_by_ticker'], portfolio_summary['weights'], portfolio_summary['start_date'], portfolio_summary['end_date'])
-
-        cum_quarterly_input_data_df = calculate.prepare_data(cumulative_returns_data, 'Quarterly')
-        logger.debug(f'cum_quarterly_input_data_df.columns:\n{cum_quarterly_input_data_df.columns}')
-        cum_quarterly_regression_models_df, cum_quarterly_multivariate_models_df, cum_quarterly_var_models_df = calculate.create_regression_models(cum_quarterly_input_data_df, 'Quarterly', True)
         
-        cum_monthly_input_data_df = calculate.prepare_data(cumulative_returns_data)
-        logger.debug(f'cum_monthly_input_data_df.columns:\n{cum_monthly_input_data_df.columns}')
-        cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, cum_monthly_var_models_df = calculate.create_regression_models(cum_monthly_input_data_df, 'Monthly', True)
-        
-        monthly_input_data_df = calculate.prepare_data(returns_data)
-        logger.debug(f'monthly_input_data_df.columns:\n{monthly_input_data_df.columns}')
-        monthly_regression_models_df, monthly_multivariate_models_df, monthly_var_models_df  = calculate.create_regression_models(monthly_input_data_df, 'Monthly', False)
+        ticker_weights_sorted = portfolio_summary['weights'][portfolio_summary['weights'] > 0].sort_values(ascending=False)
+
+        if ('macro_start_date' not in st.session_state or st.session_state['macro_start_date'] != portfolio_summary['start_date'] or 
+            'macro_end_date' not in st.session_state or st.session_state['macro_end_date'] != portfolio_summary['end_date'] or 
+            'macro_weighted_ticker_list' not in st.session_state or st.session_state['macro_weighted_ticker_list'] != ticker_weights_sorted.index.tolist()):
+
+            logger.debug(f"recalculating for portfolio_summary weights:\n{portfolio_summary['weights']}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
+
+            # Store results directly into the session state
+            st.session_state['returns_data'], st.session_state['cumulative_returns_data'], st.session_state['portfolio_returns_dict'], st.session_state['sp500_returns_dict'], st.session_state['macro_data_dict'], st.session_state['portfolio_tickers'] = \
+                calculate.get_combined_returns_data(portfolio_summary['daily_returns_by_ticker'], portfolio_summary['weights'], portfolio_summary['start_date'], portfolio_summary['end_date'])
+
+            st.session_state['cum_quarterly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'], 'Quarterly')
+            logger.debug(f'cum_quarterly_input_data_df.columns:\n{st.session_state["cum_quarterly_input_data_df"].columns}')
+            st.session_state['cum_quarterly_regression_models_df'], st.session_state['cum_quarterly_multivariate_models_df'], st.session_state['cum_quarterly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_quarterly_input_data_df'], 'Quarterly', True)
+
+            st.session_state['cum_monthly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'])
+            logger.debug(f'cum_monthly_input_data_df.columns:\n{st.session_state["cum_monthly_input_data_df"].columns}')
+            st.session_state['cum_monthly_regression_models_df'], st.session_state['cum_monthly_multivariate_models_df'], st.session_state['cum_monthly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_monthly_input_data_df'], 'Monthly', True)
+
+            st.session_state['monthly_input_data_df'] = calculate.prepare_data(st.session_state['returns_data'])
+            logger.debug(f'monthly_input_data_df.columns:\n{st.session_state["monthly_input_data_df"].columns}')
+            st.session_state['monthly_regression_models_df'], st.session_state['monthly_multivariate_models_df'], st.session_state['monthly_var_models_df'] = calculate.create_regression_models(st.session_state['monthly_input_data_df'], 'Monthly', False)
+
+            # After all calculations for a session are done, update session state variables
+            st.session_state['macro_start_date'] = st.session_state['start_date']
+            st.session_state['macro_end_date'] = st.session_state['end_date']
+            st.session_state['macro_weighted_ticker_list'] = ticker_weights_sorted.index.tolist()
     else:
         display_get_api_keys()
                 
-    #with macro_factor_description:
-    #    with st.expander("Macro Factor Descriptions"):
-    #        col1, col2, col3 = st.columns(3)
-    #        with col1:
-    #            display_general_macro_factors_descriptions()
-    #        with col2:
-    #            display_macro_factors_descriptions_1()
-    #        with col3:
-    #            display_macro_factors_descriptions_2()
 
     with user_input_container:
-        display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df)
+        display_ask_open_ai_about_macro(portfolio_summary, st.session_state.cum_monthly_regression_models_df, st.session_state.cum_monthly_multivariate_models_df, st.session_state.monthly_var_models_df)
         
         col1, col2, col3 = st.columns(3)        
         with col1:
             if 'openai_macro_synthesis_response' in st.session_state and st.session_state.openai_macro_synthesis_response: 
                 st.success(st.session_state.openai_macro_synthesis_response)
-        with col2:
-            display_general_macro_factors_descriptions()
-
-            #if 'openai_macro_portfolio_response' in st.session_state and st.session_state.openai_macro_portfolio_response: 
-            #    st.success(st.session_state.openai_macro_portfolio_response)
-            #if 'openai_macro_linear_regression_response' in st.session_state and st.session_state.openai_macro_linear_regression_response: 
-            #    st.success(st.session_state.openai_macro_linear_regression_response)
-        with col3:
-            display_macro_factors_descriptions_1()
-            display_macro_factors_descriptions_2()
-            
-            #if 'openai_macro_multivariate_regression_response' in st.session_state and st.session_state.openai_macro_multivariate_regression_response: 
-            #    st.success(st.session_state.openai_macro_multivariate_regression_response)
-            #if 'openai_macro_var_model_response' in st.session_state and st.session_state.openai_macro_var_model_response: 
-            #    st.success(st.session_state.openai_macro_var_model_response)
+                
+    with macro_factor_description_container:
+        with st.expander("Macro Factor Descriptions", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                display_general_macro_factors_descriptions()
+            with col2:
+                display_macro_factors_descriptions_1()
+            with col3:
+                display_macro_factors_descriptions_2()
 
     with plotting_container:
         st.markdown("""---""")
 
-        if cum_quarterly_regression_models_df is not None and cum_monthly_regression_models_df is not None and monthly_regression_models_df is not None:
+        if st.session_state.cum_quarterly_regression_models_df is not None and st.session_state.cum_monthly_regression_models_df is not None and st.session_state.monthly_regression_models_df is not None:
             with st.expander("Cumlative Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=True):                    
-                display_summary_of_linear_regression_results(cum_monthly_regression_models_df, 'Monthly')
-                display_individual_linear_regression_results(cum_monthly_input_data_df, cum_monthly_regression_models_df, 'Monthly', cumulative_performance=True)
+                display_summary_of_linear_regression_results(st.session_state.cum_monthly_regression_models_df, 'Monthly')
+                display_individual_linear_regression_results(st.session_state.cum_monthly_input_data_df, st.session_state.cum_monthly_regression_models_df, 'Monthly', cumulative_performance=True)
                     
             with st.expander("Cumulative Monthly Returns vs. Macro Factors (multivariate regression of portfolio performance showing most significant factors)"):
                 with st.container():
@@ -130,7 +141,7 @@ def display_macro_analysis(portfolio_summary):
 
                 with st.container():
                     col1, col2 = st.columns(2)
-                    fig_coef, fig_pval, sig_feature_plots = plot.plot_multivariate_results(cum_monthly_input_data_df, cum_monthly_multivariate_models_df.loc[0, 'Model'], cum_monthly_multivariate_models_df.loc[0, 'Significant Features'])
+                    fig_coef, fig_pval, sig_feature_plots = plot.plot_multivariate_results(st.session_state.cum_monthly_input_data_df, st.session_state.cum_monthly_multivariate_models_df.loc[0, 'Model'], st.session_state.cum_monthly_multivariate_models_df.loc[0, 'Significant Features'])
                     with col1:
                         st.plotly_chart(fig_pval, use_container_width=True)
                     with col2:
@@ -150,18 +161,18 @@ def display_macro_analysis(portfolio_summary):
                             st.plotly_chart(feature_plot, use_container_width=True)
                     
             with st.expander("Predicted Impact on Portfolio Returns with Macro Factor Shock (vector autogression - testing impact of macro factor shock on portfolio returns)"):
-                logger.debug(f'cum_var_models_df.columns:\n{monthly_var_models_df.columns}, var_models_df.shape: {monthly_var_models_df.shape}')
-                fig = plot.plot_irf(monthly_var_models_df.loc[0, 'Model'])
+                logger.debug(f'cum_var_models_df.columns:\n{st.session_state.monthly_var_models_df.columns}, var_models_df.shape: {st.session_state.monthly_var_models_df.shape}')
+                fig = plot.plot_irf(st.session_state.monthly_var_models_df.loc[0, 'Model'])
                 st.plotly_chart(fig, use_container_width=True)
             
             with st.expander("Cumlative Quarterly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=False):
-                display_summary_of_linear_regression_results(cum_quarterly_regression_models_df, 'Quarterly')
-                display_individual_linear_regression_results(cum_quarterly_input_data_df, cum_quarterly_regression_models_df, 'Quarterly', cumulative_performance=True)
+                display_summary_of_linear_regression_results(st.session_state.cum_quarterly_regression_models_df, 'Quarterly')
+                display_individual_linear_regression_results(st.session_state.cum_quarterly_input_data_df, st.session_state.cum_quarterly_regression_models_df, 'Quarterly', cumulative_performance=True)
                     
-            logger.debug(f'regression_models_df.columns:\n{monthly_regression_models_df.columns}')
+            logger.debug(f'regression_models_df.columns:\n{st.session_state.monthly_regression_models_df.columns}')
             with st.expander("Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)"):
-                display_summary_of_linear_regression_results(monthly_regression_models_df, 'Monthly')
-                display_individual_linear_regression_results(monthly_input_data_df, monthly_regression_models_df, 'Monthly', cumulative_performance=False)    
+                display_summary_of_linear_regression_results(st.session_state.monthly_regression_models_df, 'Monthly')
+                display_individual_linear_regression_results(st.session_state.monthly_input_data_df, st.session_state.monthly_regression_models_df, 'Monthly', cumulative_performance=False)    
     
 
 def display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df):
@@ -169,7 +180,7 @@ def display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_mo
         if "openai_macro_response" not in st.session_state:
             st.session_state.openai_macro_response = None
             
-        if st.button("Ask OpenAI about Macro Economic Factors that may impact this portfolio"):
+        if st.button("Ask OpenAI about Macro Economic Factors that may impact this portfolio", use_container_width=True):
             with st.spinner("Waiting for OpenAI API to respond..."):
                 synthesis_response, portfolio_response, linear_regression_response, multivariate_regression_response, var_model_response = interpret.openai_ask_about_macro_economic_factors(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df)
                 st.session_state.openai_macro_synthesis_response = synthesis_response
@@ -177,6 +188,8 @@ def display_ask_open_ai_about_macro(portfolio_summary, cum_monthly_regression_mo
                 st.session_state.openai_macro_linear_regression_response = linear_regression_response
                 st.session_state.openai_macro_multivariate_regression_response = multivariate_regression_response
                 st.session_state.openai_macro_var_model_response = var_model_response
+                
+                logger.info(f"openai_macro_synthesis_response: {st.session_state.openai_macro_synthesis_response}")
             
 def display_general_macro_factors_descriptions():
     st.markdown("<span style='color:#FF4B4B;'>General Macro Economic Conditions that may affect Portfolio Performance</span>", unsafe_allow_html=True)
@@ -205,17 +218,6 @@ def display_macro_factors_descriptions_2():
     st.markdown("<span style='color:#FF4B4B;'>Economic Policy Uncertainty Index for United States (USEPUINDXD):</span> This index quantifies newspaper coverage of policy-related economic uncertainty. A higher index level indicates greater uncertainty, which can increase market volatility and potentially lead to lower stock prices.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>10-Year Treasury Constant Maturity Rate (GS10):</span> This is the yield on U.S. Treasury securities at a constant maturity of 10 years. Treasury yields serve as a benchmark for interest rates and can influence the prices of stocks. When yields rise, stocks can become less appealing to investors as bonds offer higher guaranteed returns.", unsafe_allow_html=True)
     st.markdown("<span style='color:#FF4B4B;'>Gross Domestic Product (GDPC1):</span> This is the broadest measure of economic activity. A growing GDP indicates a healthy, expanding economy, which is generally good for corporate profits and equity markets. On the other hand, a contracting GDP may signal a recession, which can lead to declining stock prices.", unsafe_allow_html=True)
-
-def display_regression_formula(model, factor_name, y):
-    # Get the intercept and coefficient
-    intercept = model.intercept_
-    coef = model.coef_[0]
-    
-    # Format the formula string
-    formula = f"{y} = {intercept:.4f} + ({coef:.4f} * {factor_name})"
-    
-    # Display the formula
-    st.write(formula)
     
 def display_summary_of_linear_regression_results(regression_models_df, time_basis):
     col1, col2, col3 = st.columns(3, gap="small")

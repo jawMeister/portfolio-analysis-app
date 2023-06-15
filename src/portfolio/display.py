@@ -173,6 +173,7 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
                             with st.spinner("Waiting for OpenAI API to respond..."):
                                 response = interpret.openai_interpret_portfolio_summary(portfolio_summary)
                                 st.session_state.openai_portfolio_response = response
+                                logger.info(f"openAI response to portfolio question: {response}")
                         else:
                             st.error("Please enter an OpenAI API key to interpret portfolio results")
                                 
