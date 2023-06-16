@@ -104,10 +104,8 @@ def display_macro_analysis(portfolio_summary):
     with user_input_container:
         display_ask_open_ai_about_macro(portfolio_summary, st.session_state.cum_monthly_regression_models_df, st.session_state.cum_monthly_multivariate_models_df, st.session_state.monthly_var_models_df)
         
-        col1, col2, col3 = st.columns(3)        
-        with col1:
-            if 'openai_macro_synthesis_response' in st.session_state and st.session_state.openai_macro_synthesis_response: 
-                st.success(st.session_state.openai_macro_synthesis_response)
+        if 'openai_macro_synthesis_response' in st.session_state and st.session_state.openai_macro_synthesis_response: 
+            st.success(st.session_state.openai_macro_synthesis_response)
                 
     with macro_factor_description_container:
         with st.expander("Macro Factor Descriptions", expanded=False):
