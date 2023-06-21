@@ -119,23 +119,23 @@ def app():
         tickers = [ticker.strip() for ticker in tickers.split(",")]
         if sorted(tickers) != sorted(st.session_state.tickers):
             st.session_state.tickers = tickers
-            reinitialize_tabs('tickers')
+            reinitialize_tabs(kwargs={'widget_source':'tickers'})
             
         start_date = st.date_input("Start date (for historical stock data)", value=st.session_state.start_date)
         if start_date != st.session_state.start_date:
             st.session_state.start_date = start_date
-            reinitialize_tabs(widget_source='start_date')
+            reinitialize_tabs(kwargs={'widget_source':'start_date'})
 
         end_date = st.date_input("End date (for historical stock data)", value=st.session_state.end_date)
         if end_date != st.session_state.end_date:
             st.session_state.end_date = end_date
-            reinitialize_tabs(widget_source='end_date')
+            reinitialize_tabs(kwargs={'widget_source':'end_date'})
             
         rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f", )
         # since we have to convert to a float, we need to check if the value has changed and then reinitialize the tabs if necessary
         if rfr != st.session_state.risk_free_rate * 100.0:
             st.session_state.risk_free_rate = rfr / 100.0
-            reinitialize_tabs('risk_free_rate')
+            reinitialize_tabs(kwargs={'widget_source':'risk_free_rate'})
     
         st.slider("Initial investment", min_value=0, max_value=1000000, step=5000, key='initial_investment', format="$%d", on_change=reinitialize_tabs, kwargs={'widget_source':'initial_investment'})
         st.slider("Yearly contribution", min_value=0, max_value=250000, step=5000, key='yearly_contribution', format="$%d", on_change=reinitialize_tabs, kwargs={'widget_source':'yearly_contribution'})

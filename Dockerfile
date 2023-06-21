@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11.4-slim-buster
+FROM python:3-slim-bullseye
 
 # believe is needed by UnstructuredURLLoader - from https://unstructured-io.github.io/unstructured/installing.html
 # UnstructuredURLLoader can still hang on some URLs even with these installed
