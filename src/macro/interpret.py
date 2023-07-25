@@ -21,7 +21,9 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super(CustomJSONEncoder, self).default(obj)
     
 def ask_openai(question):
-    chat_completion = openai.ChatCompletion.create(model=os.getenv("GPT_MODEL"), messages=[{"role": "user", "content": question}])
+    #gpt-4-0613
+    #chat_completion = openai.ChatCompletion.create(model=os.getenv("GPT_MODEL"), messages=[{"role": "user", "content": question}])
+    chat_completion = openai.ChatCompletion.create(model="gpt-4-0613", messages=[{"role": "user", "content": question}])
     return chat_completion.choices[0].message.content
      
 def openai_ask_about_macro_economic_factors(portfolio_summary, cum_monthly_regression_models_df, cum_monthly_multivariate_models_df, monthly_var_models_df):

@@ -126,7 +126,8 @@ def get_news_for_ticker_and_analyze(ticker, news_source, n_search_results=3):
     news_results = []
     try:
         logger.debug(f"Getting news for {ticker}")
-        company = yf.Ticker(ticker).info['longName']
+        #company = yf.Ticker(ticker).info['longName']
+        company = get_company_name(ticker)
         
         # prioritize news from alpha vantage as it includes sentiment - TODO: add sentiment score processing & a toggle for news source?
         if news_source == 'Alpha Vantage':
@@ -266,3 +267,23 @@ def display_news_for_ticker(ticker):
     else:
         st.markdown(f"No news found for {ticker}")
         
+def get_company_name(symbol):
+    url = "https://www.alphavantage.co/query"
+            
+    params = {
+        "function": "SYMBOL_SEARCH",
+        "keywords": symbol,
+        "apikey": config.get_api_key('alpha_vantage'),
+    }
+    response = requests.get(url, params=params)
+    json_response = response.json()
+    
+    if 'bestMatches' not in json_response:
+        print(f"Error fetching data for symbol {symbol}: {json_response}")
+        return None
+
+    for item in json_response['bestMatches']:
+        if item['1. symbol'] == symbol:
+            return item['2. name']
+
+    return None

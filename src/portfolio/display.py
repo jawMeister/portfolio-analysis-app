@@ -182,6 +182,11 @@ def display_selected_portfolio(portfolio_summary, portfolio_df):
 
                 st.write("Calculations based on the [PyPortfolioOpt](https://pyportfolioopt.readthedocs.io/en/latest/index.html) library, additional references for education and chosen calculations:")
                 st.markdown("- https://reasonabledeviations.com/2018/09/27/lessons-portfolio-opt/\n- https://www.investopedia.com/terms/c/capm.asp\n- https://reasonabledeviations.com/notes/papers/ledoit_wolf_covariance/\n")
+                
+        #with st.container():
+        #    with st.expander("Detailed Asset Holdings"):
+        #        display_asset_values(asset_values)
+        #        st.write(detailed_asset_holdings, use_container_width=True)
     
     except Exception as e:
         st.write("An error occurred during the calculation. Please check your inputs.")
