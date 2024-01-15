@@ -4,8 +4,7 @@ pandas
 yfinance
 matplotlib
 pyportfolioopt
-pyfolio
-empyrical
+versioneer
 statsmodels
 scikit-learn
 tabulate
@@ -27,3 +26,5 @@ python-magic
 python-dotenv
 Nasdaq-Data-Link
 quandl
+pyfolio
+empyrical

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import config as config
 import src.utils as utils
@@ -105,8 +105,11 @@ def get_historical_macro_data(start_date, end_date):
 
         macro_data_dict[series_name] = resample_from_quarterly_factor_series(series)
 
-    us_m2_money_supply_base = quandl.get("FED/M2_N_M", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
-    us_m2_money_supply_base = us_m2_money_supply_base.shift(1, freq='D')  # shift the index by 1 day to align with FRED data reporting
+    # 01/06/23 - FED/M2_N_M is no longer available on Quandl, replaced with FRED/M2SL
+    #us_m2_money_supply_base = quandl.get("FED/M2_N_M", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
+    #us_m2_money_supply_base = us_m2_money_supply_base.shift(1, freq='D')  # shift the index by 1 day to align with FRED data reporting
+    us_m2_money_supply_base = quandl.get("FRED/M2SL", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
+    logger.debug(f'us_m2_money_supply_base:\n{us_m2_money_supply_base.head()}')
 
     macro_data_dict['US M2 Money Supply'] = resample_from_monthly_factor_series(us_m2_money_supply_base['Value'])
 
