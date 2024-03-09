@@ -6,9 +6,10 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 import config as config
+import src.utils as utils
 import src.macro.interpret as interpret
 import src.macro.calculate as calculate
 import src.macro.plot as plot
@@ -59,44 +60,56 @@ def display_get_api_keys():
             if temp_key:
                 config.set_api_key('fmp', temp_key)
 
+def calculate_macro_session_vars(portfolio_summary):
+    ticker_weights_sorted = portfolio_summary['weights'][portfolio_summary['weights'] > 0].sort_values(ascending=False)
+    logger.debug(f"ticker_weights_sorted:\n{ticker_weights_sorted}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
+        
+    first_row, last_row = utils.get_first_last_row_dictionaries(portfolio_summary['daily_returns_by_ticker'])
+    logger.debug(f'portfolio_summary["daily_returns_by_ticker"] {portfolio_summary["daily_returns_by_ticker"].shape}:\n{first_row}\n{last_row}')
+    
+    # Store results directly into the session state
+    st.session_state['returns_data'], st.session_state['cumulative_returns_data'], st.session_state['portfolio_returns_dict'], st.session_state['sp500_returns_dict'], st.session_state['macro_data_dict'], st.session_state['portfolio_tickers'] = \
+        calculate.get_combined_returns_data(portfolio_summary['daily_returns_by_ticker'], portfolio_summary['weights'], portfolio_summary['start_date'], portfolio_summary['end_date'])
 
+    st.session_state['cum_quarterly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'], 'Quarterly')
+    first_row, last_row = utils.get_first_last_row_dictionaries(st.session_state['cum_quarterly_input_data_df'])
+    logger.debug(f'cum_quarterly_input_data_df {st.session_state["cum_quarterly_input_data_df"].shape}:\n{first_row}\n{last_row}')
+    st.session_state['cum_quarterly_regression_models_df'], st.session_state['cum_quarterly_multivariate_models_df'], st.session_state['cum_quarterly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_quarterly_input_data_df'], 'Quarterly', True)
+
+    st.session_state['cum_monthly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'])
+    first_row, last_row = utils.get_first_last_row_dictionaries(st.session_state['cum_monthly_input_data_df'])
+    logger.debug(f'cum_monthly_input_data_df {st.session_state["cum_monthly_input_data_df"].shape}:\n{first_row}\n{last_row}')
+    st.session_state['cum_monthly_regression_models_df'], st.session_state['cum_monthly_multivariate_models_df'], st.session_state['cum_monthly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_monthly_input_data_df'], 'Monthly', True)
+
+    st.session_state['monthly_input_data_df'] = calculate.prepare_data(st.session_state['returns_data'])
+    first_row, last_row = utils.get_first_last_row_dictionaries(st.session_state['monthly_input_data_df'])
+    logger.debug(f'monthly_input_data_df {st.session_state["monthly_input_data_df"].shape}:\n{first_row}\n{last_row}')
+    st.session_state['monthly_regression_models_df'], st.session_state['monthly_multivariate_models_df'], st.session_state['monthly_var_models_df'] = calculate.create_regression_models(st.session_state['monthly_input_data_df'], 'Monthly', False)
+
+    # After all calculations for a session are done, update session state variables and leverage as indicators to recalculate macro analysis
+    st.session_state['macro_start_date'] = st.session_state['start_date']
+    st.session_state['macro_end_date'] = st.session_state['end_date']
+    st.session_state['macro_weighted_ticker_list'] = ticker_weights_sorted.index.tolist()
+            
 def display_macro_analysis(portfolio_summary):
     initialize_macro_analysis_inputs(portfolio_summary)
     macro_factor_description_container = st.container()
     user_input_container = st.container()
     plotting_container = st.container()
 
+    logger.debug('Displaying macro analysis')
     if config.check_for_api_key('fred') and config.check_for_api_key('fmp'):
-        logger.debug(f"portfolio_summary weights:\n{portfolio_summary['weights']}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
-        
-        ticker_weights_sorted = portfolio_summary['weights'][portfolio_summary['weights'] > 0].sort_values(ascending=False)
+       
+        # if the dates nor the weights have not changed, no need to recalculate - use existing session state
+        #if ('macro_start_date' not in st.session_state or st.session_state['macro_start_date'] != portfolio_summary['start_date'] or 
+        #    'macro_end_date' not in st.session_state or st.session_state['macro_end_date'] != portfolio_summary['end_date'] or 
+        #    'macro_weighted_ticker_list' not in st.session_state or st.session_state['macro_weighted_ticker_list'] != ticker_weights_sorted.index.tolist()):
 
-        if ('macro_start_date' not in st.session_state or st.session_state['macro_start_date'] != portfolio_summary['start_date'] or 
-            'macro_end_date' not in st.session_state or st.session_state['macro_end_date'] != portfolio_summary['end_date'] or 
-            'macro_weighted_ticker_list' not in st.session_state or st.session_state['macro_weighted_ticker_list'] != ticker_weights_sorted.index.tolist()):
-
-            logger.debug(f"recalculating for portfolio_summary weights:\n{portfolio_summary['weights']}, start_date: {portfolio_summary['start_date']}, end_date: {portfolio_summary['end_date']}")
-
-            # Store results directly into the session state
-            st.session_state['returns_data'], st.session_state['cumulative_returns_data'], st.session_state['portfolio_returns_dict'], st.session_state['sp500_returns_dict'], st.session_state['macro_data_dict'], st.session_state['portfolio_tickers'] = \
-                calculate.get_combined_returns_data(portfolio_summary['daily_returns_by_ticker'], portfolio_summary['weights'], portfolio_summary['start_date'], portfolio_summary['end_date'])
-
-            st.session_state['cum_quarterly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'], 'Quarterly')
-            logger.debug(f'cum_quarterly_input_data_df.columns:\n{st.session_state["cum_quarterly_input_data_df"].columns}')
-            st.session_state['cum_quarterly_regression_models_df'], st.session_state['cum_quarterly_multivariate_models_df'], st.session_state['cum_quarterly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_quarterly_input_data_df'], 'Quarterly', True)
-
-            st.session_state['cum_monthly_input_data_df'] = calculate.prepare_data(st.session_state['cumulative_returns_data'])
-            logger.debug(f'cum_monthly_input_data_df.columns:\n{st.session_state["cum_monthly_input_data_df"].columns}')
-            st.session_state['cum_monthly_regression_models_df'], st.session_state['cum_monthly_multivariate_models_df'], st.session_state['cum_monthly_var_models_df'] = calculate.create_regression_models(st.session_state['cum_monthly_input_data_df'], 'Monthly', True)
-
-            st.session_state['monthly_input_data_df'] = calculate.prepare_data(st.session_state['returns_data'])
-            logger.debug(f'monthly_input_data_df.columns:\n{st.session_state["monthly_input_data_df"].columns}')
-            st.session_state['monthly_regression_models_df'], st.session_state['monthly_multivariate_models_df'], st.session_state['monthly_var_models_df'] = calculate.create_regression_models(st.session_state['monthly_input_data_df'], 'Monthly', False)
-
-            # After all calculations for a session are done, update session state variables
-            st.session_state['macro_start_date'] = st.session_state['start_date']
-            st.session_state['macro_end_date'] = st.session_state['end_date']
-            st.session_state['macro_weighted_ticker_list'] = ticker_weights_sorted.index.tolist()
+        #    calculate_macro_session_vars(portfolio_summary)
+        #else:
+        #    logger.debug(f"Using existing session state for macro analysis")
+            
+        calculate_macro_session_vars(portfolio_summary)
     else:
         display_get_api_keys()
                 
@@ -121,7 +134,8 @@ def display_macro_analysis(portfolio_summary):
         st.markdown("""---""")
 
         if st.session_state.cum_quarterly_regression_models_df is not None and st.session_state.cum_monthly_regression_models_df is not None and st.session_state.monthly_regression_models_df is not None:
-            with st.expander("Cumlative Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=True):                    
+            with st.expander("Cumlative Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=True):
+                logger.debug('Displaying summary and individual regression results')                    
                 display_summary_of_linear_regression_results(st.session_state.cum_monthly_regression_models_df, 'Monthly')
                 display_individual_linear_regression_results(st.session_state.cum_monthly_input_data_df, st.session_state.cum_monthly_regression_models_df, 'Monthly', cumulative_performance=True)
                     
@@ -139,6 +153,7 @@ def display_macro_analysis(portfolio_summary):
 
                 with st.container():
                     col1, col2 = st.columns(2)
+                    logger.debug('Displaying multivariate regression results')
                     fig_coef, fig_pval, sig_feature_plots = plot.plot_multivariate_results(st.session_state.cum_monthly_input_data_df, st.session_state.cum_monthly_multivariate_models_df.loc[0, 'Model'], st.session_state.cum_monthly_multivariate_models_df.loc[0, 'Significant Features'])
                     with col1:
                         st.plotly_chart(fig_pval, use_container_width=True)
@@ -159,16 +174,19 @@ def display_macro_analysis(portfolio_summary):
                             st.plotly_chart(feature_plot, use_container_width=True)
                     
             with st.expander("Predicted Impact on Portfolio Returns with Macro Factor Shock (vector autogression - testing impact of macro factor shock on portfolio returns)"):
+                logger.debug('Displaying VAR model results')
                 logger.debug(f'cum_var_models_df.columns:\n{st.session_state.monthly_var_models_df.columns}, var_models_df.shape: {st.session_state.monthly_var_models_df.shape}')
                 fig = plot.plot_irf(st.session_state.monthly_var_models_df.loc[0, 'Model'])
                 st.plotly_chart(fig, use_container_width=True)
             
             with st.expander("Cumlative Quarterly Returns vs. Macro Factors (simple linear regression one macro factor at a time)", expanded=False):
+                logger.debug('Displaying summary and individual regression results for quarterly data')
                 display_summary_of_linear_regression_results(st.session_state.cum_quarterly_regression_models_df, 'Quarterly')
                 display_individual_linear_regression_results(st.session_state.cum_quarterly_input_data_df, st.session_state.cum_quarterly_regression_models_df, 'Quarterly', cumulative_performance=True)
                     
             logger.debug(f'regression_models_df.columns:\n{st.session_state.monthly_regression_models_df.columns}')
             with st.expander("Monthly Returns vs. Macro Factors (simple linear regression one macro factor at a time)"):
+                logger.debug('Displaying summary and individual regression results for Monthly Returns vs Macro Factors (simple linear regression one macro factor at a time)')
                 display_summary_of_linear_regression_results(st.session_state.monthly_regression_models_df, 'Monthly')
                 display_individual_linear_regression_results(st.session_state.monthly_input_data_df, st.session_state.monthly_regression_models_df, 'Monthly', cumulative_performance=False)    
     
@@ -224,10 +242,10 @@ def display_summary_of_linear_regression_results(regression_models_df, time_basi
         st.markdown("<span style='color:#FF4B4B;'>p-value:</span> This value is related to the significance of the macro factor vs. portfolio returns. A lower p-value indicates that a factor is statistically significant. Sorting by p-value in ascending order will give you the factors in order of their statistical significance.", unsafe_allow_html=True)
         st.plotly_chart(fig_pval, use_container_width=True)
     with col2:
-        st.markdown("<span style='color:#FF4B4B;'>Correlation:</span> This value is a measure of how well the regression line approximates the real data points. An R-squared of 100 percent indicates that all changes in the portfolio returns are completely explained by changes in the factor. So, sorting by R-squared value in descending order will give you the factors in order of their explanatory power.", unsafe_allow_html=True)
+        st.markdown("<span style='color:#FF4B4B;'>Correlation:</span> Measures the strength and direction of a linear relationship between two variables. Sorting by absolute correlation value in descending order will give you the variables in order of their linear relationship strength.", unsafe_allow_html=True)
         st.plotly_chart(fig_corr, use_container_width=True)
     with col3:
-        st.markdown("<span style='color:#FF4B4B;'>R-squared value:</span> This value measures the strength and direction of a linear relationship between the macro factor and portfolio returns. Sorting by absolute correlation value in descending order will give you the factors in order of their linear relationship strength with the portfolio returns.", unsafe_allow_html=True)
+        st.markdown("<span style='color:#FF4B4B;'>R-squared value:</span>  Measures how much of the variance in the dependent variable is explained by the independent variable(s) in a regression model. A higher R-squared value indicates a higher explanatory power of the model regarding the dependent variable's variability.", unsafe_allow_html=True)
         st.plotly_chart(fig_r2, use_container_width=True)
         
 def display_individual_linear_regression_results(input_data_df, regression_models_df, time_basis, cumulative_performance=False):

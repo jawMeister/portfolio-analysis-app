@@ -64,7 +64,7 @@ def simulate_portfolio(portfolio_summary, distribution="T-Distribution"):
     return pd.DataFrame(asset_dataframes)
 
 # run simulations in parallel using multiprocessing
-@st.cache_data
+@st.cache_data(ttl=3600)
 def run_portfolio_simulations(portfolio_summary, n_simulations, distribution="T-Distribution"):
     start_time = time.time()
     n_cores = multiprocessing.cpu_count()

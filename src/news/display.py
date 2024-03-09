@@ -1,7 +1,8 @@
 import streamlit as st
-from langchain.chat_models import ChatOpenAI
-from langchain.utilities import GoogleSerperAPIWrapper
-from langchain.document_loaders import UnstructuredURLLoader
+import os
+from langchain_openai import ChatOpenAI
+from langchain_community.utilities import GoogleSerperAPIWrapper
+from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain.schema import Document
 from langchain.chains.summarize import load_summarize_chain
 
@@ -25,7 +26,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 import config as config
 
@@ -83,7 +84,7 @@ def display_news_analysis(portfolio_summary):
                 column_counter = 0
                 n_cores = multiprocessing.cpu_count()
 
-                with st.spinner("Searching the web for news and summarizing it with OpenAI's GPT-3..."):
+                with st.spinner(f"Searching the web for news and summarizing it with OpenAI's {os.getenv('GPT_MODEL', 'gpt-3.5-turbo')}..."):
                     with concurrent.futures.ProcessPoolExecutor(max_workers=min(n_cores, n_tickers)) as executor:
                         futures_to_indices = {}
                         futures = []
@@ -168,7 +169,7 @@ def get_news_for_ticker_and_analyze(ticker, news_source, n_search_results=3):
                         
                         logger.info(f"Calling OpenAI to summarize news about {company} w/ticker {ticker}")
                         # Initialize the ChatOpenAI module, load and run the summarize chain
-                        llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo', openai_api_key=config.get_api_key('openai'))
+                        llm = ChatOpenAI(temperature=0, model=os.getenv('GPT_MODEL', 'gpt-3.5-turbo'), openai_api_key=config.get_api_key('openai'))
                         chain = load_summarize_chain(llm, chain_type="map_reduce")
                         ai_summary = chain.run(data)
                         ai_summary = ai_summary.replace("$", "\\$")

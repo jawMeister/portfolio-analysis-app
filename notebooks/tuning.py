@@ -24,9 +24,12 @@ import pandas as pd
 from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 from pypfopt import expected_returns, risk_models, EfficientFrontier
-from empyrical import sharpe_ratio, sortino_ratio
 import json
 import glob
+
+import warnings
+# Ignore all FutureWarnings from pypfopt library
+warnings.filterwarnings("ignore", category=FutureWarning, module="pypfopt")
 
 # disable prophet logging
 import logging

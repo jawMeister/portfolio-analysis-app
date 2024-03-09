@@ -41,7 +41,21 @@ def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_po
     
     fig.add_trace(go.Scatter(x=[xy_min, xy_max], y=[xy_min, xy_max], mode='lines', line=dict(color='grey', dash='dash'), opacity=0.25, showlegend=False))
 
-    fig.update_layout(title='Efficient Frontier', xaxis_title='Risk', yaxis_title='Return', legend_title='Portfolios', xaxis=dict(range=[xy_min, xy_max]), yaxis=dict(range=[xy_min, xy_max]), autosize=True,  legend=dict(x=0,y=1))
+    fig.update_layout(
+        title='Efficient Frontier',
+        xaxis_title='Risk',
+        yaxis_title='Return',
+        legend_title='Portfolios',
+        xaxis=dict(range=[xy_min, xy_max]),
+        yaxis=dict(range=[xy_min, xy_max]),
+        autosize=True,
+        legend=dict(
+            x=1, 
+            y=0,
+            xanchor='right',  # Anchors the legend's right edge at x position
+            yanchor='bottom'  # Anchors the legend's bottom edge at y position
+        )
+    )
 
     st.plotly_chart(fig, use_container_width=True)
     
@@ -456,8 +470,8 @@ def plot_historical_and_relative_performance(df_returns_monthly, df_total_return
 # TODO: want this to be total returns vs just ticker returns, although dividend math not working atm
 def plot_historical_performance_by_ticker(df_dict):
     # total is returns + dividends
-    df_total_monthly_returns_by_ticker = df_dict['df_returns_by_ticker'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_monthly_returns = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_total_monthly_returns_by_ticker = df_dict['df_returns_by_ticker'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_monthly_returns = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
     
     logger.debug(f'df_total_monthly_returns_by_ticker: {df_total_monthly_returns_by_ticker.keys()}')
     logger.debug(f'df total monthly returns by ticker: {df_total_monthly_returns_by_ticker.tail()}')
@@ -479,10 +493,10 @@ def plot_historical_performance_by_ticker(df_dict):
     return fig1
 
 def plot_portfolio_performance_by_benchmark(df_dict):
-    df_portfolio_returns_monthly = df_dict['df_weighted_portfolio_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_portfolio_returns_monthly = df_dict['df_weighted_portfolio_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
 #    df_relative_to_sp500_monthly = df_dict['df_portfolio_returns_relative_to_sp500'].resample('M').apply(lambda x: (1 + x).prod() - 1)
 #    df_relative_to_rf_monthly = df_dict['df_portfolio_returns_relative_to_rf'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
 
     cumulative_portfolio_returns_monthly = (1 + df_portfolio_returns_monthly).cumprod() - 1
 #    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
@@ -518,8 +532,8 @@ def plot_portfolio_performance_by_benchmark(df_dict):
     return fig
 
 def plot_month_to_month_portfolio_performance(df_dict):
-    df_portfolio_returns_monthly  = df_dict['df_weighted_portfolio_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('M').apply(lambda x: (1 + x).prod() - 1)
+    df_portfolio_returns_monthly  = df_dict['df_weighted_portfolio_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
     
     # (3) month to month portfolio performance (positive and negative) on an absolute basis as a column chart with a line chart of the s&p month to month performance in the same time period
     fig3 = go.Figure()

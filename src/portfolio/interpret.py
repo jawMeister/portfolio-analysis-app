@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+import os
 
 import config as config
 
@@ -9,6 +10,7 @@ def openai_interpret_portfolio_summary(portfolio_summary):
     
     if config.check_for_api_key('openai'):
         openai.api_key = config.get_api_key('openai')
+        model = os.getenv('GPT_MODEL', 'gpt-3.5-turbo')
         
         tickers = []
         for ticker in portfolio_summary["stock_data"].columns:
@@ -27,6 +29,6 @@ def openai_interpret_portfolio_summary(portfolio_summary):
         question = sharpe_q + sortino_q + cvar_q + treynor_q + data_to_share + all_q
         
         print(f"question: {question}")
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": question}])
+        chat_completion = openai.chat.completions.create(model=model, messages=[{"role": "user", "content": question}])
         
         return chat_completion.choices[0].message.content

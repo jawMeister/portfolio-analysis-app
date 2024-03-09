@@ -2,9 +2,13 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from pypfopt import expected_returns, risk_models, EfficientFrontier
-from empyrical import sharpe_ratio, sortino_ratio
 from stqdm import stqdm
 import time
+
+import warnings
+# Ignore all FutureWarnings from pypfopt library
+warnings.filterwarnings("ignore", category=FutureWarning, module="pypfopt")
+warnings.filterwarnings("ignore", category=FutureWarning, module="cvxy")
 
 import multiprocessing
 import concurrent.futures
@@ -21,7 +25,7 @@ import src.utils as utils
 
 def calculate_rebalance_segments(data, rebalance_period):
     # Group the data into segments, each covering the rebalance_period
-    data_grouped = data.groupby(pd.Grouper(freq=f'{rebalance_period}M'))
+    data_grouped = data.groupby(pd.Grouper(freq=f'{rebalance_period}ME'))
 
     # Split the grouped data into a list of dataframes
     data_segments = [group for name, group in data_grouped]
@@ -83,7 +87,8 @@ def calculate_segment_return(i, data_segments, trailing_period, rebalance_portfo
         #solve for a range of portfolios and select the one with the sharpe ratio closest to 1
         efficient_portfolios = calculate_efficient_portfolios(mu, S, st.session_state.risk_free_rate)
         rebalanced_portfolio = utils.calculate_optimal_portfolio(efficient_portfolios)
-    
+
+    data_segments[i].ffill(inplace=True).dropna()    
     # Apply the optimal weights to the current segment and calculate the portfolio return for the segment
     segment_return = (data_segments[i].pct_change() * rebalanced_portfolio['weights']).sum(axis=1)
     

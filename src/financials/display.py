@@ -110,13 +110,11 @@ def display_financials_analysis(portfolio_summary):
                             
                     st.radio("Select period:", ["Annual", "Quarterly"], key="period") #FMP need subscription to access quarterly
                     #st.radio("Select period:", ["Annual"], key="period")
-                    
+                    logger.info(f"OpenAI token limit: {os.getenv('GPT_TOKEN_LIMIT')}")
                     if int(os.getenv('GPT_TOKEN_LIMIT')) <= 8000:
                         st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
-                    elif int(os.getenv('GPT_TOKEN_LIMIT')) <= 16000:
+                    elif int(os.getenv('GPT_TOKEN_LIMIT')) >= 16000:
                         st.radio("Number of past financial statements to analyze:", [4,8,10], index=2, key="n_periods") #FMP max w/o sub is 10, GPT can handle more
-                    elif int(os.getenv('GPT_TOKEN_LIMIT')) <= 32000:
-                        st.radio("Number of past financial statements to analyze:", [4,8,10], index=2, key="n_periods")
                     else: # default to 8k
                         st.radio("Number of past financial statements to analyze:", [2,3,4], index=2, key="n_periods")
                         

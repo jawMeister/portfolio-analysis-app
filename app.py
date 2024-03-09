@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import warnings
 warnings.filterwarnings("ignore", message="Module \"zipline.assets\" not found")
+warnings.filterwarnings("ignore", category=FutureWarning, module="pypfopt")
 
 import traceback
 import logging
@@ -54,7 +55,7 @@ def initialize_inputs():
     st.session_state.setdefault('technical_tab_initialized', False)
     
     if not st.session_state.app_initialized:
-        tickers = "AAPL,AMZN,NVDA,MMC,GOOGL,MSFT,BTC-USD,ETH-USD,XOM,BAC,V,GOLD"
+        tickers = "NVDA,ASML,MSFT,TSLA,AAPL,AMD,AMZN,PLTR,CRWD,PANW,NET,GOOG,MSTR,CLSK,MARA,RIOT,COIN,KO,PEP,JNJ,MRK,AMGN,V,BAC,INTC,BABA,MDB,TEAM,ADSK,CB,PGR,SCHW,META,BTC-USD,XOM,GOLD,PGR"
         st.session_state.tickers = tickers.split(",")
         update_calculations('app initialization')
         st.session_state.app_initialized = True
@@ -133,7 +134,7 @@ def app():
             
         rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f", )
         # since we have to convert to a float, we need to check if the value has changed and then reinitialize the tabs if necessary
-        if rfr != st.session_state.risk_free_rate * 100.0:
+        if rfr - st.session_state.risk_free_rate * 100.0 > 0.01 or rfr - st.session_state.risk_free_rate * 100.0 < -0.01:
             st.session_state.risk_free_rate = rfr / 100.0
             reinitialize_tabs(kwargs={'widget_source':'risk_free_rate'})
     

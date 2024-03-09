@@ -69,7 +69,7 @@ def resample_from_quarterly_factor_series(series):
         'Yearly Change': yearly_change
     }
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_historical_macro_data(start_date, end_date):
     rate_series = ['FEDFUNDS', 'T5YIFR', 'UNRATE', 'GS10']
     monthly_series_names = {
@@ -82,7 +82,8 @@ def get_historical_macro_data(start_date, end_date):
         'HOUST': 'Housing Starts',
         'T5YIFR': '5-Year Forward Inflation Expectation Rate',
         'USEPUINDXD': 'Economic Policy Uncertainty Index for United States',
-        'GS10': '10-Year Treasury Constant Maturity Rate'
+        'GS10': '10-Year Treasury Constant Maturity Rate',
+        'M2REAL': 'US M2 Money Supply'
     }
 
     quarterly_series_names = {
@@ -108,10 +109,9 @@ def get_historical_macro_data(start_date, end_date):
     # 01/06/23 - FED/M2_N_M is no longer available on Quandl, replaced with FRED/M2SL
     #us_m2_money_supply_base = quandl.get("FED/M2_N_M", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
     #us_m2_money_supply_base = us_m2_money_supply_base.shift(1, freq='D')  # shift the index by 1 day to align with FRED data reporting
-    us_m2_money_supply_base = quandl.get("FRED/M2SL", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
-    logger.debug(f'us_m2_money_supply_base:\n{us_m2_money_supply_base.head()}')
-
-    macro_data_dict['US M2 Money Supply'] = resample_from_monthly_factor_series(us_m2_money_supply_base['Value'])
+    # 03/09/24 - M2SL was truncated to 2021, so replaced with FRED/M2REAL
+    # us_m2_money_supply_base = quandl.get("FRED/M2REAL", authtoken=config.get_api_key('nasdaq'), start_date=start_date, end_date=end_date)
+    # macro_data_dict['US M2 Money Supply'] = resample_from_monthly_factor_series(us_m2_money_supply_base['Value'])
 
     return macro_data_dict
 
@@ -125,9 +125,7 @@ def resample_from_daily_stock_returns_series(daily_returns_series):
     cumulative_quarterly_returns = ((1 + quarterly_returns).cumprod() - 1).dropna()
     cumulative_annual_returns = ((1 + annual_returns).cumprod() - 1).dropna()
     
-    # establish "Change" to imply daily, monthly, etc. returns
-    # establish w/o "Change" to imply cumulative returns
-    return {
+    return_dict = {
         'Daily': cumulative_daily_returns, 
         'Daily Change': daily_returns_series,
         'Monthly': cumulative_monthly_returns, 
@@ -137,6 +135,13 @@ def resample_from_daily_stock_returns_series(daily_returns_series):
         'Yearly': cumulative_annual_returns, 
         'Yearly Change': annual_returns
     }
+        
+    for key, value in return_dict.items():
+        logger.debug(f'{key} first: {value.index[0]} - {value.iloc[0]}, last: {value.index[-1]} - {value.iloc[-1]}')
+    
+    # establish "Change" to imply daily, monthly, etc. returns
+    # establish w/o "Change" to imply cumulative returns
+    return return_dict
     
 def get_historical_portfolio_weighted_returns_data(simple_daily_returns, weights):
 
@@ -145,12 +150,43 @@ def get_historical_portfolio_weighted_returns_data(simple_daily_returns, weights
         
     # return ticker list with non-zero weights
     portfolio_tickers = [ticker for ticker, weight in weights.items() if weight > 0]
+    # log the ticker and the weights by ticker for the calculation
+    logger.info(f'calculating portfolio weighted returns with weights:\n{weights}')
     
     portfolio_returns_dict = resample_from_daily_stock_returns_series(portfolio_daily_returns)
         
     return portfolio_returns_dict, portfolio_tickers
 
-@st.cache_data        
+def log_nested_dictionary(nested_dict):
+    # loop through each of the dictionaries, pull out the inner dictionary keys and values, and log the first and last row of the df contained within each
+    for time_basis, time_series in nested_dict.items():
+        logger.debug(f'combined_returns_data *{time_basis}* keys: {time_series.keys()}')
+        for series_name, series_data in time_series.items():
+            # log the type of series_data
+            logger.debug(f'{time_basis} {series_name} type: {type(series_data)}')
+            # if it's a pandas series, just log the index and the first and last row
+            if isinstance(series_data, pd.Series):
+                logger.debug(f'{time_basis} {series_name} first: {series_data.index[0]}:{series_data.iloc[0]}, last: {series_data.index[-1]}:{series_data.iloc[-1]}')
+            # else, if it's a dataframe, log the first and last row of the dataframe
+            elif isinstance(series_data, pd.DataFrame):
+                first_row, last_row = utils.get_first_last_row_dictionaries(series_data)
+                logger.debug(f'{time_basis} {series_name} first: {first_row}, last: {last_row}')
+            # else, if it's a dictionary, go one more loop deep and log the first and last row of the dataframe
+            elif isinstance(series_data, dict):
+                for inner_series_name, inner_series_data in series_data.items():
+                    if isinstance(inner_series_data, pd.DataFrame):
+                        first_row, last_row = utils.get_first_last_row_dictionaries(inner_series_data)
+                        logger.debug(f'{time_basis} {series_name} {inner_series_name} first: {first_row}, last: {last_row}')
+                    elif isinstance(inner_series_data, pd.Series):
+                        logger.debug(f'{time_basis} {series_name} {inner_series_name} first: {inner_series_data.index[0]}:{inner_series_data.iloc[0]}, last: {inner_series_data.index[-1]}:{inner_series_data.iloc[-1]}')
+                    else:
+                        logger.debug(f'{time_basis} {series_name} {inner_series_name} type: {type(inner_series_data)}')
+                        logger.debug(f'{time_basis} {series_name} {inner_series_name} value: {inner_series_data}')
+            else:
+                logger.debug(f'{time_basis} {series_name} type: {type(series_data)}')
+                logger.debug(f'{time_basis} {series_name} value: {series_data}')
+                        
+@st.cache_data(ttl=3600)      
 def get_combined_returns_data(simple_daily_returns, weights, start_date, end_date):
    
     sp500_data = utils.get_stock_data(['^GSPC'], start_date, end_date)
@@ -190,7 +226,8 @@ def get_combined_returns_data(simple_daily_returns, weights, start_date, end_dat
             if time_basis == 'Yearly Change':
                 yoy_change_in_macro_data[factor] = time_series.dropna()
                 
-            logger.debug(f'{factor} {time_basis}:\n{time_series.head()}\n')
+            # create a log.info of the first and last row in the time series
+            logger.info(f'{factor} {time_basis}: first {time_series.index[0]}:{time_series.iloc[0]}, last {time_series.index[-1]}:{time_series.iloc[-1]}\n')
             
     # what to do with the daily returns? maybe return the portfolio and benchmark daily returns separately?
     monthly_returns = {'Portfolio': portfolio_returns_dict['Monthly Change'], 'S&P500': sp500_returns_dict['Monthly Change'], 'Macro': mom_change_in_macro_data} # compare macro with monthly returns
@@ -212,6 +249,9 @@ def get_combined_returns_data(simple_daily_returns, weights, start_date, end_dat
         'Quarterly': cumulative_quarterly_returns,
         'Yearly': cumulative_annual_returns,
     }
+    
+    log_nested_dictionary(combined_returns_data)
+    log_nested_dictionary(combined_cumulative_returns_data)
 
     return combined_returns_data, combined_cumulative_returns_data, portfolio_returns_dict, sp500_returns_dict, macro_data_dict, portfolio_tickers
 

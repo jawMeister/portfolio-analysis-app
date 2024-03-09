@@ -4,11 +4,16 @@ import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
 from pypfopt import expected_returns, risk_models, EfficientFrontier
-from empyrical import sharpe_ratio, sortino_ratio
 from datetime import datetime, date, timedelta
+import empyrical as ep
 import streamlit as st
 import yfinance as yf
 from fredapi import Fred
+
+import warnings
+# Ignore all FutureWarnings from pypfopt library
+warnings.filterwarnings("ignore", category=FutureWarning, module="pypfopt")
+warnings.filterwarnings("ignore", category=FutureWarning, module="cvxpy")
 
 import traceback
 import logging
@@ -20,7 +25,7 @@ logger.setLevel(logging.INFO)
 
 import config as config
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def get_dividend_data(tickers, start_date, end_date):
     dividend_data = {}
 
@@ -62,7 +67,7 @@ def get_dividend_data(tickers, start_date, end_date):
 
     return pd.DataFrame(dividend_data)
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def get_stock_and_dividend_data(tickers, start_date, end_date):
     # Get yesterday's date
     yesterday = datetime.now() - timedelta(days=1)
@@ -101,7 +106,7 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
 
     return stock_data, dividend_data.fillna(0)
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def get_stock_data(tickers, start_date, end_date):
     if isinstance(start_date, (datetime, date)):
         start_date = start_date.strftime('%Y-%m-%d')
@@ -116,8 +121,8 @@ def get_stock_data(tickers, start_date, end_date):
 
 def calculate_dividend_yield(stock_data, dividend_data):
     # Calculate the annual dividends and stock prices
-    annual_dividends = dividend_data.resample('Y').sum()
-    annual_prices = stock_data.resample('Y').mean()
+    annual_dividends = dividend_data.resample('YE').sum()
+    annual_prices = stock_data.resample('YE').mean()
 
     # Convert to tz-naive
     annual_dividends.index = annual_dividends.index.tz_localize(None)
@@ -130,8 +135,8 @@ def calculate_dividend_yield(stock_data, dividend_data):
 
 def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
     # Calculate the annual dividends and stock prices
-    annual_dividends = dividend_data.resample('Y').sum()
-    annual_prices = stock_data.resample('Y').mean()
+    annual_dividends = dividend_data.resample('YE').sum()
+    annual_prices = stock_data.resample('YE').mean()
 
     # Convert to tz-naive
     annual_dividends.index = annual_dividends.index.tz_localize(None)
@@ -145,12 +150,12 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
 
     return dividend_yield_ema.iloc[-1]
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def get_sp500_daily_returns(start_date, end_date):
     sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
     return sp500
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def get_ticker_data(ticker, start_date, end_date):
     logger.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
     daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
@@ -166,7 +171,7 @@ def get_ticker_data(ticker, start_date, end_date):
         }
     )
 
-    monthly_data = daily_data.resample('M').agg(
+    monthly_data = daily_data.resample('ME').agg(
         {
             "Open": "first",
             "High": "max",
@@ -288,7 +293,6 @@ def calculate_future_asset_holdings(portfolio_summary):
     
     return yearly_data_df, future_asset_holdings_detail
 
-
 def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_date, risk_level, initial_investment, yearly_contribution, years, risk_free_rate):
     
     # Solve for the efficient portfolio at the desired risk level
@@ -296,7 +300,8 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     ef = EfficientFrontier(mu, S)
     ef.efficient_risk(risk_level)
         
-    simple_returns = stock_data.pct_change()
+    stock_data = stock_data.ffill()
+    simple_returns = stock_data.pct_change().dropna()
         
     # cumulative returns
     cumulative_daily_returns = (1 + stock_data.pct_change()).cumprod() - 1
@@ -314,7 +319,8 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     
     # TODO: this sortino may be incorrect as the dot likely nulling out assets with NaN (eg, BTC-USD prior to 2015)
     weighted_returns = simple_returns.dot(weights)
-    sortino_ratio_val = sortino_ratio(weighted_returns)
+    sortino_ratio_val = ep.sortino_ratio(weighted_returns, required_return=int(risk_free_rate))
+
     alpha = 0.05
     cvar = -np.nanpercentile(weighted_returns[weighted_returns < 0], alpha * 100)
     
@@ -401,7 +407,7 @@ def calculate_covariance_matrix(stock_data):
 
 # TODO: build a custom cache for this as streamlit cache gets a lot of misses
 # due to volume of calls and this call is expensive - ~6s on a 5950x
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def calculate_efficient_portfolios(mu, S, risk_free_rate, num_portfolios=500):
     min_risk, max_sharpe_ratio = calculate_risk_extents(mu, S, risk_free_rate)
     
@@ -502,13 +508,13 @@ def calculate_monthly_returns(data):
 
     return monthly_returns
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def retrieve_historical_data(ticker, start_date, end_date):
     logger.debug(f"Retrieving historical data for {ticker} from {start_date} to {end_date}")
     data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     return data
 
-@st.cache_data(persist=True)
+@st.cache_data(ttl=3600)
 def retrieve_risk_free_rate(start_date, end_date):
     risk_free_rate_data = None
     if config.get_api_key('fred') is not None:
@@ -531,3 +537,13 @@ def calculate_cumulative_daily_returns(stock_data):
     cumulative_returns.reset_index(inplace=True)
     
     return cumulative_returns
+
+def get_first_last_row_dictionaries(df):
+    first_row = {'index': df.index[0]}
+    last_row = {'index': df.index[-1]}
+    
+    # Update the dictionaries with row data
+    first_row.update(df.iloc[0].to_dict())
+    last_row.update(df.iloc[-1].to_dict())
+
+    return first_row, last_row

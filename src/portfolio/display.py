@@ -25,9 +25,13 @@ def display_selected_portfolio_table(portfolio_df, portfolio_summary):
     logger.debug(f"expected_return: {expected_return}, initial_investment: {initial_investment}")
     
     cumulative_weighted_portfolio_returns = portfolio_summary["cumulative_weighted_portfolio_returns"].iloc[-1]
+    first_date = portfolio_summary["cumulative_weighted_portfolio_returns"].index[0]
+    last_date = portfolio_summary["cumulative_weighted_portfolio_returns"].index[-1]
     
-    st.write(f"\nPortfolio Performance: Cumulative returns in time period are {cumulative_weighted_portfolio_returns*100:.0f}% with projected annual return **{expected_return*100:.1f}%** or \
-                **\\${initial_investment*expected_return:,.0f}** based on initial investment of \\${initial_investment:,.0f}")
+    st.write(f"\nPortfolio Performance: Cumulative returns from {first_date.strftime('%d/%m/%y')} to {last_date.strftime('%d/%m/%y')} are \
+                {cumulative_weighted_portfolio_returns*100:.0f}% with a projected annual return **{expected_return*100:.1f}%** or \
+                **\\${initial_investment*expected_return:,.0f}** based on an initial investment of \\${initial_investment:,.0f} \
+                    (charts may be truncated based on IPO dates)")
     
     displayed_portfolio = portfolio_df.copy()
     displayed_portfolio = displayed_portfolio.sort_values(by=["Weight"], ascending=False)
@@ -35,11 +39,36 @@ def display_selected_portfolio_table(portfolio_df, portfolio_summary):
     # drop the first column as default display is the index which are the tickers, so redundant
     displayed_portfolio = displayed_portfolio.drop(displayed_portfolio.columns[0], axis=1)
     
+    logger.debug(f"portfolio_df.head()\n{portfolio_df.head()}")
+    
     # Formatting
     displayed_portfolio['Cumulative Return'] = (displayed_portfolio['Cumulative Return'] * 100).map("{:.0f}%".format)
+    #displayed_portfolio['From Date'] = displayed_portfolio['Cumulative Return'].index[0].strftime('%d/%m/%y')
     displayed_portfolio = displayed_portfolio.rename(columns={"Cumulative Return (%)": "Cumulative Return"})
     
     displayed_portfolio['Weight'] = (displayed_portfolio['Weight'] * 100).map("{:.1f}%".format)
+    
+    logger.info(f'stock_data head:\n{st.session_state.stock_data.head()}')
+    # Adding 'Start Date' column
+    start_dates = []
+    for ticker in displayed_portfolio.index:
+        if ticker in st.session_state.stock_data:
+            # Drop NaN values and then get the first index
+            valid_data_df = st.session_state.stock_data[ticker].dropna()
+            if not valid_data_df.empty:
+                start_date = valid_data_df.index[0]
+                start_dates.append(start_date.strftime('%Y-%m-%d'))  # Format date as string
+                logger.info(f"ticker {ticker} start_date: {start_date}")
+            else:
+                # If all data are NaN, append 'N/A'
+                start_dates.append('N/A')
+        else:
+            # If the ticker data is not found, append 'N/A'
+            start_dates.append('N/A')
+                        
+    # Add the start_dates list as a new column to the displayed_portfolio
+    displayed_portfolio['Start Date'] = start_dates
+    
     displayed_portfolio['Initial Allocation'] = displayed_portfolio['Initial Allocation'].map("${:,.0f}".format)
     displayed_portfolio['Expected Return (%)'] = (displayed_portfolio['Expected Return (%)'] * 100).map("{:.1f}%".format)
     displayed_portfolio['Expected Dividend Yield (%)'] = (displayed_portfolio['Expected Dividend Yield (%)'] * 100).map("{:.1f}%".format)

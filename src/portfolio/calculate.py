@@ -5,6 +5,9 @@ import streamlit as st
 
 from src import utils
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="cvxy")
+
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
 
@@ -36,12 +39,31 @@ def calculate_future_asset_holdings(portfolio_summary):
     # setup a blank dataframe to store the summary detail by ticker, by year    
     yearly_columns = ['Year'] + portfolio_summary["tickers"] + ['Total Dividends', 'Total Asset Value']
     yearly_data_df = pd.DataFrame(index=range(portfolio_summary["years"] + 1), columns=yearly_columns) # +1 for the initial investment year
-    yearly_data_df = yearly_data_df.fillna(0)
-    
+
     # small floating point error with the weights, so we need to adjust the weights to make sure it sums to 1
     weight_error_factor = calculate_weight_error_factor(portfolio_summary["weights"])
 
     for ticker in portfolio_summary["tickers"]:
+        yearly_data_df[ticker] = yearly_data_df[ticker].astype('float64')
+        yearly_data_df['Total Dividends'] = yearly_data_df['Total Dividends'].astype('float64')
+        yearly_data_df['Total Asset Value'] = yearly_data_df['Total Asset Value'].astype('float64')
+        yearly_data_df['Year'] = yearly_data_df['Year'].astype('str')
+        yearly_data_df = yearly_data_df.fillna({
+            'Total Dividends': 0,  # Assuming this is numeric
+            'Total Asset Value': 0,  # Assuming this is numeric
+            'Value': 0,  # Assuming this is numeric
+            'Shares': 0,  # Assuming this is numeric
+            'Price per Share': 0,  # Assuming this is numeric
+            'Dividend Yield (%)': 0,  # Assuming this is numeric
+            'Dividends per Share': 0,  # Assuming this is numeric
+            'Dividends': 0,  # Assuming this is numeric
+            'Total Dividends': 0,  # Assuming this is numeric
+            'Total Asset Value': 0,  # Assuming this is numeric
+            'YoY Asset Growth (%)': 0,  # Assuming this is numeric
+            'Total Growth (%)': 0  # Assuming this is numeric
+            # Add other columns as needed, specifying appropriate filler values
+        })
+
         # only do calculations for tickers with an investment allocation
         if (portfolio_summary["weights"][ticker] > 0):
             # store the forecasted detail data for each asset in a detail dataframe
@@ -133,13 +155,14 @@ def calculate_monthly_returns(data):
 
     # Convert Series to DataFrame
     data = pd.DataFrame(data)
-
+    data.ffill(inplace=True)
+    
     # Calculate daily returns
     daily_returns = data.pct_change()
 
     # Resample to the monthly level
     #monthly_returns = daily_returns.resample('M').apply(lambda x: (x + 1).prod() - 1)
-    monthly_returns = daily_returns.resample('M').mean()
+    monthly_returns = daily_returns.resample('ME').mean()
 
     return monthly_returns
 
@@ -181,7 +204,12 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     logger.debug(f'dividend data describe:\n{dividend_data.describe()}')
     
     # Calculate daily returns
+    stock_data = stock_data.ffill().dropna()
     daily_returns = stock_data.pct_change()
+    
+    # get first date and last date of the daily_returns data
+    first_date = daily_returns.index[0]
+    last_date = daily_returns.index[-1]
 
     stock_data = stock_data.reindex(dividend_data.index)
     daily_dividend_returns = dividend_data / stock_data.shift()
@@ -196,17 +224,17 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     # eg., BTC-USD or a stock that had an IPO in the middle of the time series
     adjusted_weights = adjust_weights(weights, stock_data)
     #daily_portfolio_returns = (daily_total_returns.mul(adjusted_weights, axis=1)).sum(axis=1)
-    daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1)
+    daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1).dropna()
 
     # Download S&P 500 data for benchmarking
-    sp500 = utils.get_sp500_daily_returns(start_date, end_date)
+    sp500 = utils.get_sp500_daily_returns(first_date, last_date)
     # Align sp500 to daily_portfolio_returns
 
     # Calculate relative returns
     portfolio_returns_relative_to_sp500 = daily_portfolio_returns - sp500
 
     # Download risk-free rate data - has value if FRED_API_KEY is set
-    rf_rate = utils.retrieve_risk_free_rate(start_date, end_date)
+    rf_rate = utils.retrieve_risk_free_rate(first_date, last_date)
     if rf_rate is None:
         daily_rf_rate = None
         portfolio_returns_relative_to_rf = None

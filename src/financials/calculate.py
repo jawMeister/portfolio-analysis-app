@@ -131,7 +131,7 @@ def create_financial_summary_df(financial_statements, ticker, n_periods, period)
     # Return financial summary DataFrame
     return financial_summary
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_financial_statement(statement_type, ticker, period, n_periods):
     if config.check_for_api_key('fmp'):
         fmp_api_key = config.get_api_key('fmp')
