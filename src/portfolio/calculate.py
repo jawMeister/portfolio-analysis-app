@@ -204,7 +204,7 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     logger.debug(f'dividend data describe:\n{dividend_data.describe()}')
     
     # Calculate daily returns
-    stock_data = stock_data.ffill().dropna()
+    stock_data = stock_data.ffill()
     daily_returns = stock_data.pct_change()
     
     # get first date and last date of the daily_returns data
@@ -224,7 +224,7 @@ def calculate_portfolio_performance(stock_data, dividend_data, weights, start_da
     # eg., BTC-USD or a stock that had an IPO in the middle of the time series
     adjusted_weights = adjust_weights(weights, stock_data)
     #daily_portfolio_returns = (daily_total_returns.mul(adjusted_weights, axis=1)).sum(axis=1)
-    daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1).dropna()
+    daily_portfolio_returns = (daily_total_returns.mul(weights, axis=1)).sum(axis=1)
 
     # Download S&P 500 data for benchmarking
     sp500 = utils.get_sp500_daily_returns(first_date, last_date)
