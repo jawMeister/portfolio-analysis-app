@@ -55,7 +55,7 @@ def initialize_inputs():
     st.session_state.setdefault('technical_tab_initialized', False)
     
     if not st.session_state.app_initialized:
-        tickers = "NVDA,ASML,MSFT,TSLA,AAPL,AMD,AMZN,PLTR,CRWD,PANW,NET,GOOG,MSTR,CLSK,MARA,RIOT,COIN,KO,PEP,JNJ,MRK,AMGN,V,BAC,INTC,BABA,MDB,TEAM,ADSK,CB,PGR,SCHW,META,BTC-USD,XOM,GOLD,PGR"
+        tickers = "NVDA,ASML,MSFT,TSLA,AAPL,AMD,AMZN,PANW,GOOG,MSTR,MARA,KO,PEP,JNJ,MRK,AMGN,V,BAC,INTC,BABA,ADSK,CB,PGR,SCHW,META,BTC-USD,XOM,GOLD,PGR"
         st.session_state.tickers = tickers.split(",")
         update_calculations('app initialization')
         st.session_state.app_initialized = True
