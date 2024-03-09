@@ -15,6 +15,8 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
     
+# TODO: plots are being truncated based on the session stock data even for symbols not part of the weighted portfolio
+# also affected the plots matching the calculated cumulative return number, need to fix this
 def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio):
     # Create a scatter plot for the efficient frontier
     fig = go.Figure()
