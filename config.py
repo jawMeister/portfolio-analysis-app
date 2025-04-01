@@ -36,21 +36,19 @@ def mask_key(key):
 # os environment variables will take priority over config.yaml
 def get_key_from_config(key_name):
     key = None
-    
     try:
         # Try to load keys from config.yaml
         with open('config.yaml', 'r') as file:
             config = yaml.safe_load(file)
-            masked_config = {k: mask_key(v) for k, v in config.items()}
-            logger.debug(f"config: {masked_config}")
             # Ensure config is a dictionary
             assert isinstance(config, dict)
-            
             key = config.get(key_name, None)
-                
     except (FileNotFoundError, AssertionError):
-        # If the file is not found or config is not a dictionary, use empty dictionary
-        config = {}
+        key = None
+
+    # If not found in config.yaml, check the environment variable
+    if key is None:
+        key = os.getenv(key_name)
 
     return key
 

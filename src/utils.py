@@ -10,6 +10,15 @@ import streamlit as st
 import yfinance as yf
 from fredapi import Fred
 
+import requests
+from requests.adapters import HTTPAdapter
+
+# Create a global session with a larger connection pool
+session = requests.Session()
+adapter = HTTPAdapter(pool_connections=32, pool_maxsize=32)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
+
 import warnings
 # Ignore all FutureWarnings from pypfopt library
 warnings.filterwarnings("ignore", category=FutureWarning, module="pypfopt")
@@ -58,7 +67,7 @@ def get_dividend_data(tickers, start_date, end_date):
 
     logger.debug(f'Pulling {tickers} stock history from start_date: {start_date} to end_date: {end_date}')
     for ticker in tickers:
-        stock = yf.Ticker(ticker)
+        stock = yf.Ticker(ticker, session=session)
         stock_data = stock.history(start=start_date, end=end_date)
         if 'Dividends' not in stock_data.columns:
             dividend_data[ticker] = pd.Series(np.zeros(len(stock_data)), index=stock_data.index)
@@ -99,12 +108,27 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
     logger.info(f"Getting stock and dividend data for {tickers} from {start_date} to {end_date}")
     logger.debug("\n".join(traceback.format_stack()[-2:]))    
     
-    data = yf.download(tickers, start=start_date, end=end_date)
+    data = yf.download(tickers, start=start_date, end=end_date, session=session)
     
-    stock_data = data["Adj Close"]
+    #stock_data = data["Adj Close"]
+    stock_data = data["Close"]
     dividend_data = get_dividend_data(tickers, start_date, end_date)
 
     return stock_data, dividend_data.fillna(0)
+
+@st.cache_data(ttl=3600)
+def get_stock_data_vOLD(tickers, start_date, end_date):
+    if isinstance(start_date, (datetime, date)):
+        start_date = start_date.strftime('%Y-%m-%d')
+    if isinstance(end_date, (datetime, date)):
+        end_date = end_date.strftime('%Y-%m-%d')
+    if not isinstance(start_date, str) or not isinstance(end_date, str):
+        raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
+    
+    logger.info(f"Getting stock data for {tickers} from {start_date} to {end_date}")
+    #data = yf.download(tickers, start=start_date, end=end_date, session=session)['Adj Close']
+    data = yf.download(tickers, start=start_date, end=end_date, session=session)['Close']
+    return data
 
 @st.cache_data(ttl=3600)
 def get_stock_data(tickers, start_date, end_date):
@@ -116,7 +140,10 @@ def get_stock_data(tickers, start_date, end_date):
         raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
     
     logger.info(f"Getting stock data for {tickers} from {start_date} to {end_date}")
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    data = yf.download(tickers, start=start_date, end=end_date, session=session)['Close']
+    # If only a single ticker, squeeze the DataFrame to a Series
+    if isinstance(data, pd.DataFrame) and data.shape[1] == 1:
+        data = data.squeeze()
     return data
 
 def calculate_dividend_yield(stock_data, dividend_data):
@@ -152,7 +179,8 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
 
 @st.cache_data(ttl=3600)
 def get_sp500_daily_returns(start_date, end_date):
-    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
+    #sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
+    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Close'].pct_change()
     return sp500
 
 @st.cache_data(ttl=3600)
@@ -372,7 +400,7 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     return portfolio_df, portfolio_summary
 
 # TODO: fix the math
-def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free_rate):
+def calculate_treynor_ratio_vOLD(stock_data, weights, start_date, end_date, risk_free_rate):
     """
     Calculate the Treynor Ratio for a given portfolio.
 
@@ -396,6 +424,35 @@ def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free
     market_returns = get_stock_data('^GSPC', start_date, end_date).pct_change().dropna()
     portfolio_returns = weighted_returns.sum(axis=1)
     portfolio_beta = portfolio_returns.cov(market_returns) / market_returns.var()
+
+    # Calculate Treynor Ratio
+    treynor_ratio = (portfolio_return - risk_free_rate) / portfolio_beta
+
+    return treynor_ratio
+
+def calculate_treynor_ratio(stock_data, weights, start_date, end_date, risk_free_rate):
+    """
+    Calculate the Treynor Ratio for a given portfolio.
+    """
+    # Calculate portfolio returns
+    returns = stock_data.pct_change().dropna()
+    weighted_returns = returns.mul(weights, axis=1)
+    portfolio_return = weighted_returns.sum(axis=1).mean()
+
+    # Get market returns from S&P 500
+    market_data = get_stock_data('^GSPC', start_date, end_date)
+    market_returns = market_data.pct_change().dropna()
+
+    # Aggregate portfolio returns as a Series
+    portfolio_returns = weighted_returns.sum(axis=1)
+    
+    # Align indexes so both series have the same dates 
+    common_index = portfolio_returns.index.intersection(market_returns.index)
+    portfolio_returns_aligned = portfolio_returns.loc[common_index]
+    market_returns_aligned = market_returns.loc[common_index]
+
+    # Compute beta using the aligned returns
+    portfolio_beta = portfolio_returns_aligned.cov(market_returns_aligned) / market_returns_aligned.var()
 
     # Calculate Treynor Ratio
     treynor_ratio = (portfolio_return - risk_free_rate) / portfolio_beta
