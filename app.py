@@ -38,8 +38,8 @@ def initialize_inputs():
     st.session_state.setdefault('dividend_data', None)
     st.session_state.setdefault('openai_portfolio_response', None)
     st.session_state.setdefault('risk_level', None)
-    st.session_state.setdefault('min_risk', None)
-    st.session_state.setdefault('max_risk', None)
+    st.session_state.setdefault('min_risk', float(2.0))
+    st.session_state.setdefault('max_risk', float(7.5))
     st.session_state.setdefault('mu', None)
     st.session_state.setdefault('S', None)
     st.session_state.setdefault('initial_investment', 50000)
@@ -132,7 +132,7 @@ def app():
             st.session_state.end_date = end_date
             reinitialize_tabs(kwargs={'widget_source':'end_date'})
             
-        rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=0.0, max_value=7.5, step=0.1, value=4.0, format="%.1f", )
+        rfr = st.slider("Risk free rate % (t-bills rate for safe returns)", min_value=2.0, max_value=7.5, step=0.5, value=4.0, format="%.1f", )
         # since we have to convert to a float, we need to check if the value has changed and then reinitialize the tabs if necessary
         if rfr - st.session_state.risk_free_rate * 100.0 > 0.01 or rfr - st.session_state.risk_free_rate * 100.0 < -0.01:
             st.session_state.risk_free_rate = rfr / 100.0
@@ -143,7 +143,7 @@ def app():
         st.slider("Years to invest", min_value=1, max_value=50, step=1, key='years', on_change=reinitialize_tabs, kwargs={'widget_source':'years'})
         st.radio("Mean returns model", utils.get_mean_returns_models(), key="mean_returns_model", on_change=reinitialize_tabs, kwargs={'widget_source':'mean_returns_model'})
     
-        st.slider("Risk Level", min_value=st.session_state.min_risk, max_value=st.session_state.max_risk, step=0.01, key="risk_level", format="%.2f", on_change=reinitialize_tabs, kwargs={'widget_source':'risk_level'})
+        st.slider("Risk Level", min_value=float(st.session_state.min_risk), max_value=float(st.session_state.max_risk), step=0.01, key="risk_level", format="%.2f", on_change=reinitialize_tabs, kwargs={'widget_source':'risk_level'})
 
 
         """

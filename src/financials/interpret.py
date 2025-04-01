@@ -4,13 +4,10 @@ import openai
 
 import logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s):  %(module)s.%(funcName)s - %(message)s')
-
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
 import config as config
-
     
 def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period, n_periods):
     financial_statement_data =""
@@ -26,7 +23,7 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
                         
     if config.check_for_api_key('openai'):
         openai.api_key = config.get_api_key('openai')
-        
+        logger.info(f"openai.api_key: {config.mask_key(openai.api_key)}")
         analyze = f"You are an investor, analyze the financial statement data for {ticker} to " + \
                     "summarize business results and trends in paragraph form per type of financial statement provided. "
         summary = f"Financial statement data points: {financial_statement_data}.\n"
@@ -34,9 +31,7 @@ def openai_analyze_financial_statements_dict(all_summaries_dict, ticker, period,
                     
         question = analyze + summary + additionally
         logger.info(f"question for OpenAI: {question}, len: {len(question)}")
-        
-        chat_completion = openai.chat.completions.create(model=os.getenv('GPT_MODEL'), messages=[{"role": "user", "content": question}])
+        chat_completion = openai.chat.completions.create(model=config.get_key_from_config('GPT_MODEL'), messages=[{"role": "user", "content": question}])
         #gpt-4-32k
         #chat_completion = openai.ChatCompletion.create(model="gpt-4-32k", messages=[{"role": "user", "content": question}])
-        
         return chat_completion.choices[0].message.content

@@ -13,3 +13,6 @@ tmp-tune
 .streamlit
 *-bak
 .env*
+.VSCodeCounter
+.VSCodeCounter/*
+config.yaml

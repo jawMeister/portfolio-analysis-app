@@ -217,8 +217,10 @@ def retrieve_financial_statements(ticker, period, n_periods, statement_types):
     financial_statements = {}
     for financial_statement_type in statement_types:
         logger.info(f"Getting {financial_statement_type} for {ticker}")
-        financial_statements[financial_statement_type] = get_financial_statement(financial_statement_type, ticker, st.session_state['period'], st.session_state['n_periods'])
-        
+        # hack - not sure why not working...
+        #financial_statements[financial_statement_type] = get_financial_statement(financial_statement_type, ticker, st.session_state['period'], st.session_state['n_periods'])
+        financial_statements[financial_statement_type] = get_financial_statement(financial_statement_type, ticker, 'Annual', 10)
+
     return financial_statements
 
 def analyze_financial_statements(financial_summary, ticker, period, n_periods):
