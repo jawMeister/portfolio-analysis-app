@@ -3,6 +3,7 @@ from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
+import numpy as np
 import random
 
 import src.portfolio.calculate as calculate
@@ -13,8 +14,16 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s (%(levelname)s): 
 
 # Set up logger for a specific module to a different level
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
     
+
+
+def ensure_datetime_index(df):
+    """Ensure the DataFrame index is a DatetimeIndex."""
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+    return df
+
 # TODO: plots are being truncated based on the session stock data even for symbols not part of the weighted portfolio
 # also affected the plots matching the calculated cumulative return number, need to fix this
 def plot_efficient_frontier(efficient_portfolios, selected_portfolio, optimal_portfolio):
@@ -471,76 +480,240 @@ def plot_historical_and_relative_performance(df_returns_monthly, df_total_return
 
 # TODO: want this to be total returns vs just ticker returns, although dividend math not working atm
 def plot_historical_performance_by_ticker(df_dict):
-    # total is returns + dividends
-    df_total_monthly_returns_by_ticker = df_dict['df_returns_by_ticker'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_monthly_returns = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    # Ensure the DataFrames have a proper, sorted DatetimeIndex
+    df_returns = ensure_datetime_index(df_dict['df_returns_by_ticker'])
+    df_sp500 = ensure_datetime_index(df_dict['df_sp500_returns'])
     
-    logger.debug(f'df_total_monthly_returns_by_ticker: {df_total_monthly_returns_by_ticker.keys()}')
-    logger.debug(f'df total monthly returns by ticker: {df_total_monthly_returns_by_ticker.tail()}')
+    logger.debug(f"df_returns index range: {df_returns.index.min()} to {df_returns.index.max()}")
+    logger.debug(f"df_sp500 index range: {df_sp500.index.min()} to {df_sp500.index.max()}")
     
+    # Calculate monthly returns using 'ME' (month-end)
+    df_total_monthly_returns_by_ticker = df_returns.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_monthly_returns = df_sp500.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    
+    logger.debug(f"df_total_monthly_returns_by_ticker columns: {df_total_monthly_returns_by_ticker.columns}")
+    logger.debug(f"df total monthly returns by ticker (tail):\n{df_total_monthly_returns_by_ticker.tail()}")
+    logger.debug(f"df_sp500_monthly_returns columns: {df_sp500_monthly_returns.columns}")
+    logger.debug(f"df sp500 monthly returns (tail):\n{df_sp500_monthly_returns.tail()}")
+
+    # Compute cumulative returns
     total_cumulative_monthly_returns_by_ticker = (1 + df_total_monthly_returns_by_ticker).cumprod() - 1
     sp500_cumulative_monthly_returns = (1 + df_sp500_monthly_returns).cumprod() - 1
+
+    # Force alignment: use the intersection of both indexes
+    common_index = total_cumulative_monthly_returns_by_ticker.index.intersection(sp500_cumulative_monthly_returns.index)
+    total_cumulative_aligned = total_cumulative_monthly_returns_by_ticker.loc[common_index]
+    sp500_cumulative_aligned = sp500_cumulative_monthly_returns.loc[common_index]
     
-    total_cumulative_monthly_returns_relative_to_sp500 = total_cumulative_monthly_returns_by_ticker.subtract(sp500_cumulative_monthly_returns, axis=0)
+    # Compute returns relative to S&P 500
+    total_cumulative_monthly_returns_relative_to_sp500 = total_cumulative_aligned.subtract(sp500_cumulative_aligned.iloc[:, 0], axis=0)
+    logger.debug(f"Cumulative returns relative to S&P 500 (head):\n{total_cumulative_monthly_returns_relative_to_sp500.head()}")
+    logger.debug(f"Cumulative returns relative to S&P 500 (tail):\n{total_cumulative_monthly_returns_relative_to_sp500.tail()}")
     
-    
-    # (1) total returns by ticker as a line chart
+    # (1) Plot each ticker as a line chart
     fig1 = go.Figure()
     for ticker in total_cumulative_monthly_returns_relative_to_sp500.columns:
-        fig1.add_trace(go.Scatter(x=total_cumulative_monthly_returns_relative_to_sp500.index, y=total_cumulative_monthly_returns_relative_to_sp500[ticker], mode='lines', name=ticker))
-    fig1.update_layout(title='Cumulative Monthly Returns Relative to S&P 500', yaxis_title='Performance Relative to S&P 500')
-    
+        fig1.add_trace(go.Scatter(
+            x=total_cumulative_monthly_returns_relative_to_sp500.index,
+            y=total_cumulative_monthly_returns_relative_to_sp500[ticker],
+            mode='lines',
+            name=ticker))
+    fig1.update_layout(title='Cumulative Monthly Returns Relative to S&P 500',
+                       yaxis_title='Performance Relative to S&P 500')
     fig1.update_yaxes(tickformat='.1%')
     
     return fig1
 
 def plot_portfolio_performance_by_benchmark(df_dict):
-    df_portfolio_returns_monthly = df_dict['df_weighted_portfolio_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
-#    df_relative_to_sp500_monthly = df_dict['df_portfolio_returns_relative_to_sp500'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-#    df_relative_to_rf_monthly = df_dict['df_portfolio_returns_relative_to_rf'].resample('M').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    # Ensure data uses proper DatetimeIndex
+    df_portfolio = ensure_datetime_index(df_dict['df_weighted_portfolio_returns'])
+    df_sp500 = ensure_datetime_index(df_dict['df_sp500_returns'])
 
+    # Resample monthly (using month-end alias 'ME')
+    df_portfolio_returns_monthly = df_portfolio.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_sp500.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+
+    # Compute cumulative returns
     cumulative_portfolio_returns_monthly = (1 + df_portfolio_returns_monthly).cumprod() - 1
-#    cumulative_relative_to_sp500_monthly = (1 + df_relative_to_sp500_monthly).cumprod() - 1
-#    cumulative_relative_to_rf_monthly = (1 + df_relative_to_rf_monthly).cumprod() - 1
     cumulative_sp500_returns_monthly = (1 + df_sp500_returns_monthly).cumprod() - 1
 
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    # Force alignment using the common index
+    common_index = cumulative_portfolio_returns_monthly.index.intersection(cumulative_sp500_returns_monthly.index)
+    portfolio_aligned = cumulative_portfolio_returns_monthly.loc[common_index]
+    sp500_aligned = cumulative_sp500_returns_monthly.loc[common_index]
 
+    # Remove any duplicated index values
+    portfolio_aligned = portfolio_aligned[~portfolio_aligned.index.duplicated(keep='first')]
+    sp500_aligned = sp500_aligned[~sp500_aligned.index.duplicated(keep='first')]
+
+    # Convert PeriodIndex to DatetimeIndex if applicable
+    if isinstance(portfolio_aligned.index, pd.PeriodIndex):
+        portfolio_aligned.index = portfolio_aligned.index.to_timestamp(how='end')
+    if isinstance(sp500_aligned.index, pd.PeriodIndex):
+        sp500_aligned.index = sp500_aligned.index.to_timestamp(how='end')
+
+    # Extract S&P 500 values - since it may be a DataFrame
+    if isinstance(sp500_aligned, pd.DataFrame):
+        sp500_values = sp500_aligned.iloc[:, 0]
+    else:
+        sp500_values = sp500_aligned
+
+    # Debug output for verification
+    logger.debug(f"Portfolio aligned (tail):\n{portfolio_aligned.tail()}")
+    logger.debug(f"Portfolio aligned (head):\n{portfolio_aligned.head()}")
+    logger.debug(f"S&P 500 aligned (tail):\n{sp500_aligned.tail()}")
+    logger.debug(f"S&P 500 aligned (head):\n{sp500_aligned.head()}")
+
+    # Use a simple Figure
+    fig = go.Figure()
+
+    # Add weighted portfolio trace with fill
     fig.add_trace(
-        go.Scatter(x=cumulative_portfolio_returns_monthly.index, y=cumulative_portfolio_returns_monthly, mode='lines', name='Weighted Portfolio', fill='tozeroy'),
-        secondary_y=False,
+        go.Scatter(
+            x=portfolio_aligned.index,
+            y=portfolio_aligned,
+            mode='lines',
+            name='Weighted Portfolio',
+            #line=dict(width=3),
+            fill='tozeroy'
+        )
     )
 
+    # Add S&P 500 trace with seagreen style (no markers)
     fig.add_trace(
-        go.Scatter(x=cumulative_sp500_returns_monthly.index, y=cumulative_sp500_returns_monthly, mode='lines', name='Cumulative S&P 500 Returns', marker=dict(color='lightseagreen')),
+        go.Scatter(
+            x=sp500_values.index,
+            y=sp500_values,
+            mode='lines',
+            name='Cumulative S&P 500 Returns',
+            line=dict(width=3, color='lightseagreen')
+        )
     )
-
-#    fig.add_trace(
-#        go.Scatter(x=cumulative_relative_to_rf_monthly.index, y=cumulative_relative_to_rf_monthly, mode='lines', name='Relative to Risk-Free Rate'),
-#        secondary_y=True,
-#    )
 
     fig.update_layout(
         title='Cumulative (Weighted) Portfolio Returns & Benchmarks',
+        xaxis_title='Date',
         yaxis_title='Total Returns',
-        yaxis2_title='Relative Returns',
-        legend=dict(x=0,y=1)
+        legend=dict(x=0, y=1)
     )
     
-    fig.update_yaxes(tickformat='.1%', secondary_y=False)
-    fig.update_yaxes(tickformat='.1%', secondary_y=True)
+    fig.update_yaxes(tickformat='.1%')
+    fig.update_xaxes(tickformat='%Y-%m-%d', type='date')
 
     return fig
 
 def plot_month_to_month_portfolio_performance(df_dict):
-    df_portfolio_returns_monthly  = df_dict['df_weighted_portfolio_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
-    df_sp500_returns_monthly = df_dict['df_sp500_returns'].resample('ME').apply(lambda x: (1 + x).prod() - 1)
-    
-    # (3) month to month portfolio performance (positive and negative) on an absolute basis as a column chart with a line chart of the s&p month to month performance in the same time period
-    fig3 = go.Figure()
-    fig3.add_trace(go.Bar(x=df_portfolio_returns_monthly.index, y=df_portfolio_returns_monthly, name='Portfolio'))
-    fig3.add_trace(go.Scatter(x=df_sp500_returns_monthly.index, y=df_sp500_returns_monthly, mode='lines', name='S&P 500', marker=dict(color='lightseagreen')))
-    fig3.update_layout(title='Month-to-Month Portfolio (Weighted) Performance', yaxis_title='Total Returns', yaxis_tickformat='.1%', legend=dict(x=0,y=1))
+    # Ensure data uses proper DatetimeIndex
+    df_portfolio = ensure_datetime_index(df_dict['df_weighted_portfolio_returns'])
+    df_sp500 = ensure_datetime_index(df_dict['df_sp500_returns'])
 
-    return fig3
+    # Resample monthly (using month-end alias 'ME')
+    df_portfolio_returns_monthly = df_portfolio.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    df_sp500_returns_monthly = df_sp500.resample('ME').apply(lambda x: (1 + x).prod() - 1)
+    
+    # Force alignment using the common index
+    common_index = df_portfolio_returns_monthly.index.intersection(df_sp500_returns_monthly.index)
+    portfolio_aligned = df_portfolio_returns_monthly.loc[common_index]
+    sp500_aligned = df_sp500_returns_monthly.loc[common_index]
+
+    # Remove any duplicated index values
+    portfolio_aligned = portfolio_aligned[~portfolio_aligned.index.duplicated(keep='first')]
+    sp500_aligned = sp500_aligned[~sp500_aligned.index.duplicated(keep='first')]
+
+    # Convert PeriodIndex to DatetimeIndex if applicable
+    if isinstance(portfolio_aligned.index, pd.PeriodIndex):
+        portfolio_aligned.index = portfolio_aligned.index.to_timestamp(how='end')
+    if isinstance(sp500_aligned.index, pd.PeriodIndex):
+        sp500_aligned.index = sp500_aligned.index.to_timestamp(how='end')
+
+    # Extract S&P 500 values - since it may be a DataFrame
+    if isinstance(sp500_aligned, pd.DataFrame):
+        sp500_values = sp500_aligned.iloc[:, 0]
+    else:
+        sp500_values = sp500_aligned
+
+    # Calculate the difference (portfolio - S&P 500)
+    performance_difference = portfolio_aligned - sp500_values
+    
+    # Split the performance difference into positive and negative values
+    positive_diff = performance_difference.copy()
+    positive_diff[positive_diff <= 0] = np.nan  # Set non-positive values to NaN
+    
+    negative_diff = performance_difference.copy()
+    negative_diff[negative_diff >= 0] = np.nan  # Set non-negative values to NaN
+    
+    # Create a figure with two subplots
+    from plotly.subplots import make_subplots
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                        subplot_titles=('Absolute Monthly Returns', 'Relative Performance vs S&P 500'),
+                        vertical_spacing=0.1, 
+                        row_heights=[0.6, 0.4])
+    
+    # Add absolute returns to the top subplot
+    fig.add_trace(
+        go.Bar(
+            x=portfolio_aligned.index, 
+            y=portfolio_aligned, 
+            name='Portfolio',
+        ),
+        row=1, col=1
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=sp500_values.index, 
+            y=sp500_values, 
+            mode='lines', 
+            name='S&P 500', 
+            marker=dict(color='lightseagreen')
+        ),
+        row=1, col=1
+    )
+    
+    # Add positive performance difference (outperformance)
+    fig.add_trace(
+        go.Bar(
+            x=positive_diff.index, 
+            y=positive_diff, 
+            name='Outperformance',
+            marker_color='green'
+        ),
+        row=2, col=1
+    )
+    
+    # Add negative performance difference (underperformance)
+    fig.add_trace(
+        go.Bar(
+            x=negative_diff.index, 
+            y=negative_diff, 
+            name='Underperformance',
+            marker_color='red'
+        ),
+        row=2, col=1
+    )
+    
+    # Add zero line to the relative performance subplot
+    fig.add_shape(
+        type='line',
+        x0=performance_difference.index.min(),
+        x1=performance_difference.index.max(),
+        y0=0, y1=0,
+        line=dict(color='black', width=1, dash='dash'),
+        row=2, col=1
+    )
+    
+    fig.update_layout(
+        title='Monthly Portfolio Performance',
+        height=800,
+        showlegend=True,
+        legend=dict(x=0, y=1)
+    )
+    
+    # Format y-axes as percentages
+    fig.update_yaxes(tickformat='.1%', row=1, col=1)
+    fig.update_yaxes(tickformat='.1%', row=2, col=1, title_text='Portfolio - S&P 500')
+    
+    # Force x-axis to be date type
+    fig.update_xaxes(tickformat='%Y-%m-%d', type='date')
+    
+    return fig

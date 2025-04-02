@@ -14,10 +14,10 @@ import requests
 from requests.adapters import HTTPAdapter
 
 # Create a global session with a larger connection pool
-session = requests.Session()
+g_session = requests.Session()
 adapter = HTTPAdapter(pool_connections=32, pool_maxsize=32)
-session.mount("http://", adapter)
-session.mount("https://", adapter)
+g_session.mount("http://", adapter)
+g_session.mount("https://", adapter)
 
 import warnings
 # Ignore all FutureWarnings from pypfopt library
@@ -67,7 +67,7 @@ def get_dividend_data(tickers, start_date, end_date):
 
     logger.debug(f'Pulling {tickers} stock history from start_date: {start_date} to end_date: {end_date}')
     for ticker in tickers:
-        stock = yf.Ticker(ticker, session=session)
+        stock = yf.Ticker(ticker, session=g_session)
         stock_data = stock.history(start=start_date, end=end_date)
         if 'Dividends' not in stock_data.columns:
             dividend_data[ticker] = pd.Series(np.zeros(len(stock_data)), index=stock_data.index)
@@ -108,7 +108,7 @@ def get_stock_and_dividend_data(tickers, start_date, end_date):
     logger.info(f"Getting stock and dividend data for {tickers} from {start_date} to {end_date}")
     logger.debug("\n".join(traceback.format_stack()[-2:]))    
     
-    data = yf.download(tickers, start=start_date, end=end_date, session=session)
+    data = yf.download(tickers, start=start_date, end=end_date, session=g_session)
     
     #stock_data = data["Adj Close"]
     stock_data = data["Close"]
@@ -127,7 +127,7 @@ def get_stock_data_vOLD(tickers, start_date, end_date):
     
     logger.info(f"Getting stock data for {tickers} from {start_date} to {end_date}")
     #data = yf.download(tickers, start=start_date, end=end_date, session=session)['Adj Close']
-    data = yf.download(tickers, start=start_date, end=end_date, session=session)['Close']
+    data = yf.download(tickers, start=start_date, end=end_date, session=g_session)['Close']
     return data
 
 @st.cache_data(ttl=3600)
@@ -140,7 +140,7 @@ def get_stock_data(tickers, start_date, end_date):
         raise TypeError(f"start_date ({type(start_date)}) and end_date ({type(end_date)}) must be either strings or datetime objects.")
     
     logger.info(f"Getting stock data for {tickers} from {start_date} to {end_date}")
-    data = yf.download(tickers, start=start_date, end=end_date, session=session)['Close']
+    data = yf.download(tickers, start=start_date, end=end_date, session=g_session)['Close']
     # If only a single ticker, squeeze the DataFrame to a Series
     if isinstance(data, pd.DataFrame) and data.shape[1] == 1:
         data = data.squeeze()
@@ -180,14 +180,21 @@ def calculate_weighted_dividend_yield(stock_data, dividend_data, span=3):
 @st.cache_data(ttl=3600)
 def get_sp500_daily_returns(start_date, end_date):
     #sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close'].pct_change()
-    sp500 = yf.download('^GSPC', start=start_date, end=end_date)['Close'].pct_change()
+    sp500 = yf.download('^GSPC', start=start_date, end=end_date, session=g_session)['Close'].pct_change()
     return sp500
 
 @st.cache_data(ttl=3600)
 def get_ticker_data(ticker, start_date, end_date):
     logger.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
-    daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d')
+    daily_data = yf.download(ticker, start=start_date, end=end_date, interval='1d', session=g_session)
     daily_data.dropna(inplace=True)
+
+    # Flatten the MultiIndex columns if present
+    if isinstance(daily_data.columns, pd.MultiIndex):
+        daily_data.columns = daily_data.columns.get_level_values(0)
+    
+    # log the columns
+    logger.info(f"Columns in {ticker} data: {daily_data.columns.tolist()}")
 
     weekly_data = daily_data.resample('W').agg(
         {
