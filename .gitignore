@@ -17,3 +17,5 @@ tmp-tune
 .VSCodeCounter
 .VSCodeCounter/*
 config.yaml
+.venv*
+.venv*/*
