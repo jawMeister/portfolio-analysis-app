@@ -354,7 +354,9 @@ def calculate_portfolio_df(stock_data, dividend_data, mu, S, start_date, end_dat
     
     # TODO: this sortino may be incorrect as the dot likely nulling out assets with NaN (eg, BTC-USD prior to 2015)
     weighted_returns = simple_returns.dot(weights)
-    sortino_ratio_val = ep.sortino_ratio(weighted_returns, required_return=int(risk_free_rate))
+    # Handle case where risk_free_rate might be None
+    risk_free_rate_safe = risk_free_rate if risk_free_rate is not None else 0.04
+    sortino_ratio_val = ep.sortino_ratio(weighted_returns, required_return=int(risk_free_rate_safe))
 
     alpha = 0.05
     cvar = -np.nanpercentile(weighted_returns[weighted_returns < 0], alpha * 100)
